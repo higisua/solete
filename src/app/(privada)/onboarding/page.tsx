@@ -14,7 +14,7 @@ export default function OnboardingPage() {
       <NinoForm
         titulo="¡Tu primer perfil!"
         submitLabel="Crear perfil"
-        siguiente="/familia"
+        siguiente="/entrada"
         avatares={avatares}
       />
     </main>

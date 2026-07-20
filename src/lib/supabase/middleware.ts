@@ -35,7 +35,7 @@ export async function updateSession(request: NextRequest) {
     const clean = request.nextUrl.clone();
     clean.searchParams.delete("code");
     if (!exchangeError && (clean.pathname === "/" || clean.pathname === "/login")) {
-      clean.pathname = "/familia";
+      clean.pathname = "/entrada";
     }
     const redirectResponse = NextResponse.redirect(clean);
     supabaseResponse.cookies.getAll().forEach((cookie) => {
@@ -74,7 +74,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user && esAuthForm) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/familia";
+    redirectUrl.pathname = "/entrada";
     return NextResponse.redirect(redirectUrl);
   }
 

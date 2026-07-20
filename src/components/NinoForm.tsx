@@ -24,7 +24,7 @@ type Props = {
 export function NinoForm({
   titulo = "Añadir niño o niña",
   submitLabel = "Guardar perfil",
-  siguiente = "/familia",
+  siguiente = "/entrada",
   avatares = [...AVATARES],
 }: Props) {
   const [curso, setCurso] = useState<"1" | "2" | "">("");

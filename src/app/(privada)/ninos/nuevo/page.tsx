@@ -14,7 +14,7 @@ export default function NuevoNinoPage() {
       <NinoForm
         titulo="Añadir niño o niña"
         submitLabel="Guardar perfil"
-        siguiente="/familia"
+        siguiente="/entrada"
         avatares={avatares}
       />
     </main>

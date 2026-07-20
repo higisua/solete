@@ -78,7 +78,7 @@ export default async function FamiliaPage() {
       </div>
 
       <p className="mt-2 text-base text-black/70">
-        Perfiles de los niños. En la siguiente fase podrán elegir quién juega.
+        Perfiles de los niños. Desde aquí puedes añadir más o ir a jugar.
       </p>
 
       <ul className="mt-8 flex flex-col gap-3">
@@ -112,8 +112,14 @@ export default async function FamiliaPage() {
       </ul>
 
       <Link
+        href="/entrada"
+        className="mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-sol px-5 font-titulo text-lg font-semibold text-white hover:bg-sol-claro"
+      >
+        ¡A jugar!
+      </Link>
+      <Link
         href="/ninos/nuevo"
-        className="mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-mar px-5 font-titulo text-lg font-semibold text-white hover:bg-mar-claro"
+        className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-mar px-5 font-titulo text-lg font-semibold text-white hover:bg-mar-claro"
       >
         Añadir otro niño
       </Link>

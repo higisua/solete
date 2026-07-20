@@ -207,14 +207,14 @@ export async function actualizarContrasena(formData: FormData): Promise<ActionRe
     return { ok: false, error: mensajeErrorAuth(error) };
   }
 
-  redirect("/familia");
+  redirect("/entrada");
 }
 
 export async function crearNino(formData: FormData): Promise<ActionResult> {
   const nombre = texto(formData, "nombre");
   const curso = texto(formData, "curso");
   const avatar = texto(formData, "avatar");
-  const siguiente = texto(formData, "siguiente") || "/familia";
+  const siguiente = texto(formData, "siguiente") || "/entrada";
 
   if (!nombre) {
     return { ok: false, error: "Escribe el nombre del niño o la niña." };
