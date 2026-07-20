@@ -113,7 +113,7 @@ export default async function MundoPage() {
                 className="flex min-h-[72px] items-center gap-4 rounded-3xl bg-white px-4 py-3 shadow-sm transition active:scale-[0.98] hover:bg-mar-claro/25"
               >
                 <span
-                  className="flex h-14 w-14 items-center justify-center rounded-2xl bg-limon/50 text-3xl"
+                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-limon/50 text-4xl leading-none"
                   aria-hidden
                 >
                   {iconoAsignatura(asig.icono)}
