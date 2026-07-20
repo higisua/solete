@@ -163,6 +163,10 @@ export async function iniciarSesion(formData: FormData): Promise<ActionResult> {
 }
 
 export async function cerrarSesion(): Promise<void> {
+  const { clearAccesoZonaPadres } = await import("@/lib/zona-padres");
+  const { clearNinoActivoId } = await import("@/lib/nino-activo");
+  await clearAccesoZonaPadres();
+  await clearNinoActivoId();
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
