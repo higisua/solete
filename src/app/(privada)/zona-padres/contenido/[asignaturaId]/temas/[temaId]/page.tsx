@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   actualizarTema,
@@ -7,6 +6,8 @@ import {
 } from "@/app/actions/superadmin";
 import { FormularioPregunta } from "@/components/zona-padres/FormularioPregunta";
 import { Field, SuperadminForm } from "@/components/zona-padres/SuperadminForm";
+import { MigasContenido } from "@/components/zona-padres/MigasContenido";
+import { BotonBorrarConfirmado } from "@/components/zona-padres/BotonBorrarConfirmado";
 import { createClient } from "@/lib/supabase/server";
 import type { Pregunta } from "@/types/database";
 
@@ -31,6 +32,12 @@ export default async function TemaDetailPage({ params }: Props) {
     .maybeSingle();
   if (!tema) notFound();
 
+  const { data: asignatura } = await supabase
+    .from("asignaturas")
+    .select("nombre")
+    .eq("id", asignaturaId)
+    .maybeSingle();
+
   const { data: preguntasRaw } = await supabase
     .from("preguntas")
     .select("*")
@@ -44,41 +51,53 @@ export default async function TemaDetailPage({ params }: Props) {
 
   return (
     <div>
-      <Link
-        href={`/zona-padres/contenido/${asignaturaId}`}
-        className="text-sm font-semibold text-mar"
-      >
-        ← Asignatura
-      </Link>
-      <h1 className="mt-3 font-titulo text-2xl font-semibold text-sol">{tema.nombre}</h1>
-      <p className="mt-1 text-sm text-black/55">
-        Aquí gestionas las preguntas de este tema.
+      <MigasContenido
+        items={[
+          { label: "Contenido", href: "/zona-padres/contenido" },
+          {
+            label: asignatura?.nombre ?? "Asignatura",
+            href: `/zona-padres/contenido/${asignaturaId}`,
+          },
+          { label: tema.nombre },
+        ]}
+      />
+      <h1 className="mt-3 font-titulo text-2xl font-semibold text-sol">
+        {tema.nombre}
+      </h1>
+      <p className="mt-1 font-cuerpo text-sm text-black/50">
+        Gestiona las preguntas de este tema
       </p>
 
-      {/* Preguntas primero: es lo más importante */}
       <section className="mt-6">
-        <h2 className="font-titulo text-xl text-sol">
+        <h2 className="font-titulo text-xl font-semibold text-sol">
           Preguntas ({preguntas.length})
         </h2>
 
         {preguntas.length === 0 ? (
-          <p className="mt-3 rounded-2xl bg-limon/25 px-4 py-3 text-sm text-black/70">
+          <p className="mt-3 rounded-[22px] bg-limon/30 px-4 py-3 font-cuerpo text-sm text-black/70">
             Todavía no hay preguntas. Usa el formulario de abajo para crear la
             primera.
           </p>
         ) : (
           <ul className="mt-3 flex flex-col gap-3">
             {preguntas.map((p) => (
-              <li key={p.id} className="rounded-2xl bg-white p-4 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-wide text-black/45">
+              <li
+                key={p.id}
+                className="rounded-[22px] bg-white p-4 shadow-[0_10px_28px_-14px_rgba(216,90,48,0.25)]"
+              >
+                <p className="font-titulo text-[11px] font-semibold uppercase tracking-wide text-black/40">
                   {etiquetaTipo(p.tipo)} · dificultad {p.dificultad}
                 </p>
-                <p className="mt-1 font-titulo text-lg text-sol">{p.enunciado}</p>
-                <details className="mt-3">
-                  <summary className="cursor-pointer font-titulo text-sm font-semibold text-mar">
-                    Editar pregunta
+                <p className="mt-1 font-titulo text-lg font-semibold leading-snug text-sol">
+                  {p.enunciado}
+                </p>
+                <details className="mt-3 group">
+                  <summary className="cursor-pointer list-none font-titulo text-sm font-semibold text-mar marker:content-none [&::-webkit-details-marker]:hidden">
+                    <span className="underline-offset-2 group-open:no-underline">
+                      Editar pregunta
+                    </span>
                   </summary>
-                  <div className="mt-3 border-t border-black/5 pt-3">
+                  <div className="mt-3 border-t border-black/[0.06] pt-3">
                     <FormularioPregunta
                       modo="editar"
                       asignaturaId={asignaturaId}
@@ -87,26 +106,30 @@ export default async function TemaDetailPage({ params }: Props) {
                     />
                   </div>
                 </details>
-                <form
-                  action={borrarPregunta.bind(null, p.id, asignaturaId, temaId)}
-                  className="mt-3"
-                >
-                  <button
-                    type="submit"
-                    className="min-h-11 rounded-xl bg-fallo/20 px-4 font-titulo text-sm font-semibold text-[#8a3b28]"
+                <div className="mt-3">
+                  <BotonBorrarConfirmado
+                    action={borrarPregunta.bind(
+                      null,
+                      p.id,
+                      asignaturaId,
+                      temaId,
+                    )}
+                    confirmar="¿Borrar esta pregunta?"
                   >
                     Borrar pregunta
-                  </button>
-                </form>
+                  </BotonBorrarConfirmado>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </section>
 
-      <section className="mt-8 rounded-2xl border-2 border-sol/30 bg-white p-4 shadow-sm">
-        <h2 className="font-titulo text-xl text-sol">Nueva pregunta</h2>
-        <p className="mt-1 text-sm text-black/55">
+      <section className="mt-8 rounded-[22px] border-2 border-sol/25 bg-white p-4 shadow-[0_10px_28px_-14px_rgba(216,90,48,0.25)]">
+        <h2 className="font-titulo text-xl font-semibold text-sol">
+          Nueva pregunta
+        </h2>
+        <p className="mt-1 font-cuerpo text-sm text-black/50">
           Elige el tipo y se mostrarán los campos adecuados.
         </p>
         <div className="mt-4">
@@ -118,13 +141,20 @@ export default async function TemaDetailPage({ params }: Props) {
         </div>
       </section>
 
-      <section className="mt-8 rounded-2xl bg-white/70 p-4">
-        <h2 className="font-titulo text-lg text-black/55">Ajustes del tema</h2>
+      <section className="mt-8 rounded-[22px] bg-white/80 p-4 shadow-[0_8px_22px_-14px_rgba(216,90,48,0.2)]">
+        <h2 className="font-titulo text-lg font-semibold text-black/50">
+          Ajustes del tema
+        </h2>
         <div className="mt-3">
           <SuperadminForm action={actualizarTema} submitLabel="Guardar tema">
             <input type="hidden" name="id" value={tema.id} />
             <input type="hidden" name="asignatura_id" value={asignaturaId} />
-            <Field label="Nombre" name="nombre" required defaultValue={tema.nombre} />
+            <Field
+              label="Nombre"
+              name="nombre"
+              required
+              defaultValue={tema.nombre}
+            />
             <Field
               label="Orden"
               name="orden"

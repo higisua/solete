@@ -8,7 +8,8 @@ import {
   cambiarPin,
 } from "@/app/actions/zona-padres";
 import { cerrarSesion } from "@/app/actions/auth";
-import { Button, ErrorBox, Field, SuccessBox } from "@/components/auth-ui";
+import { Boton, Campo, CampoGrupo } from "@/components/ui";
+import { ErrorBox, SuccessBox } from "@/components/auth-ui";
 
 type Props = {
   nombreFamilia: string;
@@ -57,66 +58,79 @@ export function AjustesForm({ nombreFamilia }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <section>
-        <h2 className="font-titulo text-lg text-sol">Nombre de la familia</h2>
-        <form action={onNombre} className="mt-3 flex flex-col gap-3">
-          <Field label="Nombre" name="nombre" required defaultValue={nombreFamilia} />
-          {errorNombre ? <ErrorBox message={errorNombre} /> : null}
-          {okNombre ? <SuccessBox message="Nombre actualizado." /> : null}
-          <Button type="submit" disabled={pendingNombre}>
-            {pendingNombre ? "Guardando…" : "Guardar nombre"}
-          </Button>
+    <div className="flex flex-col gap-5">
+      <section className="rounded-[22px] bg-white p-4 shadow-[0_10px_28px_-14px_rgba(216,90,48,0.25)]">
+        <h2 className="font-titulo text-lg font-semibold text-sol">
+          Nombre de la familia
+        </h2>
+        <form action={onNombre} className="mt-3">
+          <CampoGrupo>
+            <Campo
+              label="Nombre"
+              name="nombre"
+              required
+              defaultValue={nombreFamilia}
+            />
+            {errorNombre ? <ErrorBox message={errorNombre} /> : null}
+            {okNombre ? <SuccessBox message="Nombre actualizado." /> : null}
+            <Boton type="submit" disabled={pendingNombre}>
+              {pendingNombre ? "Guardando…" : "Guardar nombre"}
+            </Boton>
+          </CampoGrupo>
         </form>
       </section>
 
-      <section>
-        <h2 className="font-titulo text-lg text-sol">Cambiar PIN</h2>
-        <form action={onPin} className="mt-3 flex flex-col gap-3">
-          <Field
-            label="PIN actual"
-            name="pin_actual"
-            type="password"
-            inputMode="numeric"
-            pattern="[0-9]{4}"
-            maxLength={4}
-            required
-            autoComplete="off"
-          />
-          <Field
-            label="PIN nuevo"
-            name="pin_nuevo"
-            type="password"
-            inputMode="numeric"
-            pattern="[0-9]{4}"
-            maxLength={4}
-            required
-            autoComplete="off"
-          />
-          <Field
-            label="Repetir PIN nuevo"
-            name="pin_nuevo2"
-            type="password"
-            inputMode="numeric"
-            pattern="[0-9]{4}"
-            maxLength={4}
-            required
-            autoComplete="off"
-          />
-          {errorPin ? <ErrorBox message={errorPin} /> : null}
-          {okPin ? <SuccessBox message="PIN actualizado." /> : null}
-          <Button type="submit" disabled={pendingPin}>
-            {pendingPin ? "Guardando…" : "Cambiar PIN"}
-          </Button>
+      <section className="rounded-[22px] bg-white p-4 shadow-[0_10px_28px_-14px_rgba(216,90,48,0.25)]">
+        <h2 className="font-titulo text-lg font-semibold text-sol">
+          Cambiar PIN
+        </h2>
+        <form action={onPin} className="mt-3">
+          <CampoGrupo>
+            <Campo
+              label="PIN actual"
+              name="pin_actual"
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]{4}"
+              maxLength={4}
+              required
+              autoComplete="off"
+            />
+            <Campo
+              label="PIN nuevo"
+              name="pin_nuevo"
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]{4}"
+              maxLength={4}
+              required
+              autoComplete="off"
+            />
+            <Campo
+              label="Repetir PIN nuevo"
+              name="pin_nuevo2"
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]{4}"
+              maxLength={4}
+              required
+              autoComplete="off"
+            />
+            {errorPin ? <ErrorBox message={errorPin} /> : null}
+            {okPin ? <SuccessBox message="PIN actualizado." /> : null}
+            <Boton type="submit" disabled={pendingPin}>
+              {pendingPin ? "Guardando…" : "Cambiar PIN"}
+            </Boton>
+          </CampoGrupo>
         </form>
       </section>
 
-      <section>
-        <h2 className="font-titulo text-lg text-sol">Sesión</h2>
+      <section className="rounded-[22px] bg-white p-4 shadow-[0_10px_28px_-14px_rgba(216,90,48,0.25)]">
+        <h2 className="font-titulo text-lg font-semibold text-sol">Sesión</h2>
         <form action={cerrarSesion} className="mt-3">
-          <Button type="submit" variant="suave">
+          <Boton type="submit" variant="suave">
             Cerrar sesión
-          </Button>
+          </Boton>
         </form>
       </section>
     </div>

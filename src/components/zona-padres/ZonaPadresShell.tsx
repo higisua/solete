@@ -2,52 +2,107 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
+import {
+  Baby,
+  BarChart3,
+  BookOpen,
+  Gamepad2,
+  Pencil,
+  Settings,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { salirZonaPadres } from "@/app/actions/zona-padres";
 import type { TabZonaPadres } from "@/lib/zona-padres-tabs";
+import { cn } from "@/lib/cn";
+
+const ICONOS: Record<TabZonaPadres["icono"], LucideIcon> = {
+  hijos: Baby,
+  temas: BookOpen,
+  resultados: BarChart3,
+  ajustes: Settings,
+  contenido: Pencil,
+  usuarios: Users,
+};
 
 type Props = {
   tabs: TabZonaPadres[];
-  children: React.ReactNode;
+  children: ReactNode;
   tituloFamilia: string;
 };
 
 export function ZonaPadresShell({ tabs, children, tituloFamilia }: Props) {
   const pathname = usePathname();
+  const reducir = useReducedMotion();
+  const muchasTabs = tabs.length > 4;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-crema">
-      <header className="flex items-center justify-between gap-2 border-b border-black/5 px-4 py-3">
-        <div>
-          <p className="text-xs text-black/45">Zona padres</p>
-          <p className="font-titulo text-lg font-semibold text-sol">{tituloFamilia}</p>
+    <div className="fondo-halo-sol mx-auto flex min-h-dvh w-full max-w-md flex-col">
+      <header className="flex items-center justify-between gap-3 px-5 pb-3 pt-5">
+        <div className="min-w-0">
+          <p className="font-cuerpo text-xs text-black/45">Zona padres</p>
+          <p className="truncate font-titulo text-xl font-semibold text-sol">
+            {tituloFamilia}
+          </p>
         </div>
         <form action={salirZonaPadres}>
           <button
             type="submit"
-            className="min-h-11 rounded-2xl bg-white px-3 text-sm font-semibold text-mar shadow-sm"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-2xl bg-white px-3.5 font-titulo text-sm font-semibold text-mar shadow-[0_4px_14px_-6px_rgba(29,158,117,0.35)] transition active:scale-[0.97]"
           >
-            Volver al juego
+            <Gamepad2 className="h-4 w-4 stroke-[2]" aria-hidden />
+            Al juego
           </button>
         </form>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-24">{children}</div>
+      <div className="flex-1 overflow-y-auto px-5 pb-28 pt-1">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={pathname}
+            initial={reducir ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reducir ? undefined : { opacity: 0, y: -6 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
+      </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 border-t border-black/5 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-md justify-around px-1 py-1">
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-30 border-t border-black/[0.06] bg-white/90 backdrop-blur-md"
+        aria-label="Secciones zona padres"
+      >
+        <div
+          className={cn(
+            "mx-auto flex max-w-md gap-0.5 px-2 py-2",
+            muchasTabs ? "justify-between overflow-x-auto" : "justify-around",
+          )}
+        >
           {tabs.map((tab) => {
             const activo = pathname.startsWith(tab.href);
+            const Icono = ICONOS[tab.icono];
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={`flex min-h-14 min-w-[4.5rem] flex-col items-center justify-center rounded-xl px-2 text-xs font-semibold ${
-                  activo ? "bg-limon/40 text-sol" : "text-black/45"
-                }`}
+                className={cn(
+                  "flex min-h-14 min-w-[4.25rem] flex-col items-center justify-center gap-0.5 rounded-2xl px-2 font-titulo text-[11px] font-semibold transition",
+                  activo
+                    ? "bg-sol/10 text-sol shadow-[inset_0_0_0_1.5px_rgba(216,90,48,0.2)]"
+                    : "text-black/40 hover:text-black/55",
+                )}
               >
-                <span className="text-lg" aria-hidden>
-                  {tab.icono}
-                </span>
+                <Icono
+                  className={cn(
+                    "h-5 w-5 stroke-[1.75]",
+                    activo ? "stroke-sol" : "stroke-current",
+                  )}
+                  aria-hidden
+                />
                 {tab.label}
               </Link>
             );

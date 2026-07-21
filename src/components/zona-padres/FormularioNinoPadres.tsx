@@ -8,8 +8,10 @@ import {
   crearNinoZonaPadres,
 } from "@/app/actions/zona-padres";
 import { AVATARES } from "@/lib/avatares";
-import { Button, ErrorBox, Field } from "@/components/auth-ui";
+import { Boton, Campo, CampoGrupo } from "@/components/ui";
+import { ErrorBox } from "@/components/auth-ui";
 import type { Nino } from "@/types/database";
+import { cn } from "@/lib/cn";
 
 type AvatarOpcion = { id: string; nombre: string; src: string };
 
@@ -49,77 +51,92 @@ export function FormularioNinoPadres({
   }
 
   return (
-    <form action={onSubmit} className="flex flex-col gap-5">
-      {modo === "editar" && nino ? (
-        <input type="hidden" name="nino_id" value={nino.id} />
-      ) : null}
-      <input type="hidden" name="curso" value={curso} />
-      <input type="hidden" name="avatar" value={avatar} />
+    <form
+      action={onSubmit}
+      className="rounded-[22px] bg-white p-4 shadow-[0_10px_28px_-14px_rgba(216,90,48,0.25)]"
+    >
+      <CampoGrupo>
+        {modo === "editar" && nino ? (
+          <input type="hidden" name="nino_id" value={nino.id} />
+        ) : null}
+        <input type="hidden" name="curso" value={curso} />
+        <input type="hidden" name="avatar" value={avatar} />
 
-      <Field
-        label="Nombre"
-        name="nombre"
-        required
-        maxLength={40}
-        defaultValue={nino?.nombre}
-        placeholder="Ej. Lucía"
-      />
+        <Campo
+          label="Nombre"
+          name="nombre"
+          required
+          maxLength={40}
+          defaultValue={nino?.nombre}
+          placeholder="Ej. Lucía"
+        />
 
-      <fieldset>
-        <legend className="mb-2 font-titulo text-base text-sol">Curso</legend>
-        <div className="grid grid-cols-2 gap-3">
-          {(
-            [
-              { value: "1", label: "1º" },
-              { value: "2", label: "2º" },
-            ] as const
-          ).map((op) => (
-            <button
-              key={op.value}
-              type="button"
-              onClick={() => setCurso(op.value)}
-              className={`min-h-12 rounded-2xl border-2 font-titulo text-lg font-semibold ${
-                curso === op.value
-                  ? "border-mar bg-mar text-white"
-                  : "border-mar-claro/60 bg-white text-mar"
-              }`}
-            >
-              {op.label}
-            </button>
-          ))}
-        </div>
-      </fieldset>
+        <fieldset>
+          <legend className="mb-2 font-titulo text-base font-semibold text-sol">
+            Curso
+          </legend>
+          <div className="grid grid-cols-2 gap-3">
+            {(
+              [
+                { value: "1", label: "1º" },
+                { value: "2", label: "2º" },
+              ] as const
+            ).map((op) => (
+              <button
+                key={op.value}
+                type="button"
+                onClick={() => setCurso(op.value)}
+                className={cn(
+                  "min-h-12 rounded-2xl border-[2.5px] font-titulo text-lg font-semibold transition",
+                  curso === op.value
+                    ? "border-mar bg-mar text-white shadow-[0_3px_0_0_rgba(18,110,80,0.3)]"
+                    : "border-mar/25 bg-white text-mar",
+                )}
+              >
+                {op.label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
 
-      <fieldset>
-        <legend className="mb-2 font-titulo text-base text-sol">Avatar</legend>
-        <div className="grid grid-cols-3 gap-2">
-          {avatares.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setAvatar(item.id)}
-              className={`flex flex-col items-center rounded-2xl border-4 bg-white p-2 ${
-                avatar === item.id ? "border-sol" : "border-transparent"
-              }`}
-            >
-              <Image
-                src={item.src}
-                alt={item.nombre}
-                width={56}
-                height={56}
-                unoptimized
-                className="h-14 w-14 object-contain"
-              />
-              <span className="text-xs">{item.nombre}</span>
-            </button>
-          ))}
-        </div>
-      </fieldset>
+        <fieldset>
+          <legend className="mb-2 font-titulo text-base font-semibold text-sol">
+            Avatar
+          </legend>
+          <div className="grid grid-cols-3 gap-2">
+            {avatares.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setAvatar(item.id)}
+                className={cn(
+                  "flex flex-col items-center rounded-2xl border-[3px] bg-[#FFF8ED]/60 p-2 transition",
+                  avatar === item.id
+                    ? "border-sol shadow-[0_4px_12px_-6px_rgba(216,90,48,0.4)]"
+                    : "border-transparent",
+                )}
+              >
+                <Image
+                  src={item.src}
+                  alt={item.nombre}
+                  width={56}
+                  height={56}
+                  unoptimized
+                  className="h-14 w-14 object-contain"
+                />
+                <span className="mt-1 font-cuerpo text-xs text-black/55">
+                  {item.nombre}
+                </span>
+              </button>
+            ))}
+          </div>
+        </fieldset>
 
-      {error ? <ErrorBox message={error} /> : null}
-      <Button type="submit" disabled={pending || !curso || !avatar}>
-        {pending ? "Guardando…" : modo === "crear" ? "Crear perfil" : "Guardar"}
-      </Button>
+        {error ? <ErrorBox message={error} /> : null}
+        <Boton type="submit" disabled={pending || !curso || !avatar}>
+          {pending ? "Guardando…" : modo === "crear" ? "Crear perfil" : "Guardar"}
+        </Boton>
+      </CampoGrupo>
     </form>
   );
 }

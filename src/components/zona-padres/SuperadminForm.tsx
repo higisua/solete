@@ -1,17 +1,25 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useState, useTransition } from "react";
 import { unstable_rethrow } from "next/navigation";
-import { Button, ErrorBox, Field } from "@/components/auth-ui";
+import { Boton, Campo } from "@/components/ui";
+import { ErrorBox } from "@/components/auth-ui";
 import type { ActionResult } from "@/types/database";
 
 type Props = {
   action: (formData: FormData) => Promise<ActionResult>;
-  children: React.ReactNode;
+  children: ReactNode;
   submitLabel: string;
+  className?: string;
 };
 
-export function SuperadminForm({ action, children, submitLabel }: Props) {
+export function SuperadminForm({
+  action,
+  children,
+  submitLabel,
+  className,
+}: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -29,14 +37,15 @@ export function SuperadminForm({ action, children, submitLabel }: Props) {
   }
 
   return (
-    <form action={onSubmit} className="flex flex-col gap-4">
+    <form action={onSubmit} className={className ?? "flex flex-col gap-4"}>
       {children}
       {error ? <ErrorBox message={error} /> : null}
-      <Button type="submit" disabled={pending}>
+      <Boton type="submit" disabled={pending}>
         {pending ? "Guardando…" : submitLabel}
-      </Button>
+      </Boton>
     </form>
   );
 }
 
-export { Field };
+/** Alias para formularios legacy; usa Campo del sistema visual. */
+export { Campo as Field };

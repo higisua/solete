@@ -41,7 +41,9 @@ export default async function TemasPage() {
     return (
       <div>
         <h1 className="font-titulo text-2xl font-semibold text-sol">Temas</h1>
-        <p className="mt-4 text-black/60">Añade un hijo para configurar temas.</p>
+        <p className="mt-4 font-cuerpo text-black/55">
+          Añade un hijo para configurar temas.
+        </p>
       </div>
     );
   }
@@ -49,7 +51,7 @@ export default async function TemasPage() {
   return (
     <div>
       <h1 className="font-titulo text-2xl font-semibold text-sol">Temas</h1>
-      <p className="mt-1 text-sm text-black/55">
+      <p className="mt-1 font-cuerpo text-sm text-black/50">
         Activa o desactiva lo que practica cada niño.
       </p>
 
@@ -58,24 +60,33 @@ export default async function TemasPage() {
           const asigs = (asignaturas ?? []).filter((a) => a.curso === nino.curso);
           return (
             <section key={nino.id}>
-              <h2 className="font-titulo text-xl text-mar">{nino.nombre}</h2>
-              <div className="mt-3 flex flex-col gap-4">
+              <h2 className="font-titulo text-lg font-semibold text-mar">
+                {nino.nombre}
+              </h2>
+              <div className="mt-3 flex flex-col gap-3">
                 {asigs.map((asig) => {
                   const temasAsig = (temas ?? [])
                     .filter((t) => t.asignatura_id === asig.id)
                     .sort((a, b) => a.orden - b.orden);
                   return (
-                    <div key={asig.id} className="rounded-2xl bg-white p-4 shadow-sm">
-                      <p className="font-titulo text-lg text-sol">{asig.nombre}</p>
-                      <ul className="mt-3 flex flex-col gap-3">
+                    <div
+                      key={asig.id}
+                      className="rounded-[22px] bg-white p-4 shadow-[0_10px_28px_-14px_rgba(216,90,48,0.25)]"
+                    >
+                      <p className="font-titulo text-base font-semibold text-sol">
+                        {asig.nombre}
+                      </p>
+                      <ul className="mt-3 flex flex-col gap-1">
                         {temasAsig.map((tema) => {
                           const activo = estaActivo(nino.id, tema.id);
                           return (
                             <li
                               key={tema.id}
-                              className="flex items-center justify-between gap-3"
+                              className="flex items-center justify-between gap-3 rounded-xl px-1 py-2"
                             >
-                              <span className="text-base text-black/80">{tema.nombre}</span>
+                              <span className="font-cuerpo text-base text-black/75">
+                                {tema.nombre}
+                              </span>
                               <ToggleTema
                                 ninoId={nino.id}
                                 temaId={tema.id}
@@ -86,7 +97,9 @@ export default async function TemasPage() {
                           );
                         })}
                         {temasAsig.length === 0 ? (
-                          <li className="text-sm text-black/45">Sin temas</li>
+                          <li className="font-cuerpo text-sm text-black/40">
+                            Sin temas
+                          </li>
                         ) : null}
                       </ul>
                     </div>
