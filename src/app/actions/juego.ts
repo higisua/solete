@@ -7,23 +7,11 @@ import { clearNinoActivoId, setNinoActivoId } from "@/lib/nino-activo";
 
 /**
  * Tras login / alta: decide a dónde ir según cuántos niños hay.
- * - 0 → /familia (alta o vacío)
- * - 1 → fija cookie y /mundo
- * - 2+ → /quien-juega
+ * Preferible GET /entrada (Route Handler) tras login; esta action
+ * sirve si se invoca explícitamente como Server Action.
  */
 export async function resolverEntradaJuego(): Promise<never> {
-  const ninos = await getNinosDeMiFamilia();
-
-  if (ninos.length === 0) {
-    redirect("/familia");
-  }
-
-  if (ninos.length === 1) {
-    await setNinoActivoId(ninos[0].id);
-    redirect("/mundo");
-  }
-
-  redirect("/quien-juega");
+  redirect("/entrada");
 }
 
 export async function seleccionarNino(

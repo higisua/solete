@@ -5,20 +5,26 @@ import {
   getAsignaturasPorCurso,
   getNinoActivoValidado,
 } from "@/lib/juego";
-import { getPreguntasParaPartida } from "@/lib/juego/preguntas";
+import { getPreguntasParaPractica } from "@/lib/juego/preguntas";
 import type { ModoJuego } from "@/types/database";
 
 type Props = {
   params: Promise<{ asignaturaId: string; modo: string }>;
+  searchParams: Promise<{ tema?: string }>;
 };
 
-export default async function PartidaPage({ params }: Props) {
+export default async function PartidaPage({ params, searchParams }: Props) {
   const { asignaturaId, modo: modoRaw } = await params;
+  const { tema: temaId } = await searchParams;
 
-  if (modoRaw !== "mision" && modoRaw !== "libre") {
+  if (modoRaw === "mision") {
+    redirect("/jugar/mision");
+  }
+
+  if (modoRaw !== "libre") {
     notFound();
   }
-  const modo = modoRaw as ModoJuego;
+  const modo = "libre" as ModoJuego;
 
   const nino = await getNinoActivoValidado();
   if (!nino) {
@@ -31,10 +37,10 @@ export default async function PartidaPage({ params }: Props) {
     redirect("/mundo");
   }
 
-  const { preguntas, misionCorta } = await getPreguntasParaPartida(
+  const preguntas = await getPreguntasParaPractica(
     nino.id,
     asignaturaId,
-    modo,
+    temaId ?? null,
   );
 
   if (preguntas.length === 0) {
@@ -60,15 +66,24 @@ export default async function PartidaPage({ params }: Props) {
     );
   }
 
+  const etiqueta = temaId
+    ? `${asignatura.nombre} (tema)`
+    : asignatura.nombre;
+
   return (
     <MotorPreguntas
       ninoId={nino.id}
       ninoNombre={nino.nombre}
       asignaturaId={asignatura.id}
-      asignaturaNombre={asignatura.nombre}
+      asignaturaNombre={etiqueta}
       modo={modo}
       preguntasIniciales={preguntas}
-      misionCorta={misionCorta}
+      misionCorta={false}
+      hrefOtraVez={
+        temaId
+          ? `/jugar/${asignatura.id}/libre?tema=${temaId}`
+          : `/jugar/${asignatura.id}/libre`
+      }
     />
   );
 }

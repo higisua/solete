@@ -27,12 +27,38 @@ export async function getAsignaturasPorCurso(curso: "1" | "2"): Promise<Asignatu
   return (data as Asignatura[]) ?? [];
 }
 
-/** Suma sencilla de puntos/estrellas del niño (0 si aún no hay filas). */
+/**
+ * Totales para el mundo del niño:
+ * - puntos ≈ diamantes acumulados (ninos.diamantes; fallback a progreso.puntos si aún no hay columna)
+ * - estrellas = suma de estrellas de misiones_diarias (fallback a progreso.estrellas)
+ */
 export async function getTotalesProgreso(ninoId: string): Promise<{
   puntos: number;
   estrellas: number;
 }> {
   const supabase = await createClient();
+
+  const { data: nino } = await supabase
+    .from("ninos")
+    .select("diamantes")
+    .eq("id", ninoId)
+    .maybeSingle();
+
+  const { data: misiones } = await supabase
+    .from("misiones_diarias")
+    .select("estrellas")
+    .eq("nino_id", ninoId)
+    .eq("completada", true);
+
+  if (nino && typeof nino.diamantes === "number") {
+    const estrellas = (misiones ?? []).reduce(
+      (s, m) => s + (m.estrellas ?? 0),
+      0,
+    );
+    return { puntos: nino.diamantes, estrellas };
+  }
+
+  // Fallback si aún no se ejecutó fase6
   const { data } = await supabase
     .from("progreso")
     .select("puntos, estrellas")

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
 import { unstable_rethrow } from "next/navigation";
 import type { ActionResult } from "@/types/database";
-import { AuthShell, Button, ErrorBox, Field, SuccessBox } from "@/components/ui";
+import { AuthShell, Button, ErrorBox, Field, SuccessBox } from "@/components/auth-ui";
 
 type Props = {
   action: (formData: FormData) => Promise<ActionResult>;

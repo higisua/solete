@@ -8,7 +8,11 @@ export {
 export {
   getTemasActivosDeAsignatura,
   getPreguntasParaPartida,
+  getPreguntasParaPractica,
+  getPreguntasParaMisionDiaria,
 } from "@/lib/juego/preguntas";
+
+export { obtenerMisionDiariaDeHoy } from "@/lib/juego/mision-diaria";
 
 export {
   MISION_OBJETIVO,
@@ -19,4 +23,5 @@ export {
   mensajeAnimo,
   formatearRespuestaCorrecta,
   temaPredominante,
+  repartirCupos,
 } from "@/lib/juego/reglas";

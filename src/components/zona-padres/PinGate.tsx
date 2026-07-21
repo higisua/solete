@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { unstable_rethrow } from "next/navigation";
 import { verificarPinZonaPadres } from "@/app/actions/zona-padres";
-import { ErrorBox } from "@/components/ui";
+import { ErrorBox } from "@/components/auth-ui";
 
 const TECLAS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "borrar"] as const;
 

@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import {
   getAsignaturasPorCurso,
   getNinoActivoValidado,
+  getTemasActivosDeAsignatura,
 } from "@/lib/juego";
+import { MISION_OBJETIVO } from "@/lib/juego/reglas";
 
 type Props = {
   params: Promise<{ asignaturaId: string }>;
@@ -31,6 +33,8 @@ export default async function ElegirModoPage({ params }: Props) {
     );
   }
 
+  const temas = await getTemasActivosDeAsignatura(nino.id, asignaturaId);
+
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 py-8">
       <p className="text-center text-base text-black/55">{nino.nombre}</p>
@@ -41,7 +45,7 @@ export default async function ElegirModoPage({ params }: Props) {
 
       <div className="mt-10 flex flex-col gap-4">
         <Link
-          href={`/jugar/${asignaturaId}/mision`}
+          href="/jugar/mision"
           className="flex min-h-[100px] flex-col items-start justify-center rounded-3xl bg-sol px-5 py-4 text-left text-white shadow-sm transition active:scale-[0.98]"
         >
           <span className="text-3xl" aria-hidden>
@@ -49,7 +53,7 @@ export default async function ElegirModoPage({ params }: Props) {
           </span>
           <span className="mt-1 font-titulo text-2xl font-semibold">Misión del día</span>
           <span className="mt-1 text-sm text-white/90">
-            10 preguntas. ¡Gana estrellas y suma a tu racha!
+            {MISION_OBJETIVO} preguntas de todas las asignaturas. Una al día.
           </span>
         </Link>
 
@@ -60,12 +64,32 @@ export default async function ElegirModoPage({ params }: Props) {
           <span className="text-3xl" aria-hidden>
             🎮
           </span>
-          <span className="mt-1 font-titulo text-2xl font-semibold">Juego libre</span>
+          <span className="mt-1 font-titulo text-2xl font-semibold">Práctica</span>
           <span className="mt-1 text-sm text-white/90">
-            Juega sin límite. Suma puntos y para cuando quieras.
+            Sin límite en {asignatura.nombre}. Sin diamantes ni estrellas.
           </span>
         </Link>
       </div>
+
+      {temas.length > 0 ? (
+        <div className="mt-8">
+          <h2 className="font-titulo text-xl font-semibold text-sol">
+            Practicar un tema
+          </h2>
+          <ul className="mt-3 flex flex-col gap-2">
+            {temas.map((tema) => (
+              <li key={tema.id}>
+                <Link
+                  href={`/jugar/${asignaturaId}/libre?tema=${tema.id}`}
+                  className="flex min-h-12 items-center rounded-2xl bg-white px-4 font-titulo text-lg text-sol shadow-sm"
+                >
+                  {tema.nombre}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <Link
         href="/mundo"

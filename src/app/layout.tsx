@@ -1,20 +1,26 @@
 import type { Metadata } from "next";
-import { Fredoka, Nunito } from "next/font/google";
+import { Mali, Quicksand } from "next/font/google";
 import "./globals.css";
 
-const fredoka = Fredoka({
-  variable: "--font-fredoka",
+const mali = Mali({
+  variable: "--font-mali",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const nunito = Nunito({
-  variable: "--font-nunito",
+const quicksand = Quicksand({
+  variable: "--font-quicksand",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
   title: "Solete",
   description: "Repasa asignaturas en verano, de forma divertida",
+  icons: {
+    icon: [{ url: "/assets/logos/solete-favicon.png", type: "image/png" }],
+    apple: [{ url: "/assets/logos/solete-favicon.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({
@@ -25,7 +31,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${fredoka.variable} ${nunito.variable} h-full antialiased`}
+      className={`${mali.variable} ${quicksand.variable} h-full antialiased`}
     >
       <body className="min-h-full font-cuerpo">{children}</body>
     </html>

@@ -8,7 +8,7 @@ import {
   crearNinoZonaPadres,
 } from "@/app/actions/zona-padres";
 import { AVATARES } from "@/lib/avatares";
-import { Button, ErrorBox, Field } from "@/components/ui";
+import { Button, ErrorBox, Field } from "@/components/auth-ui";
 import type { Nino } from "@/types/database";
 
 type AvatarOpcion = { id: string; nombre: string; src: string };

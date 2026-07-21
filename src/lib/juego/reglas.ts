@@ -1,20 +1,25 @@
 import type { ModoJuego, TipoPregunta } from "@/types/database";
 
-export const MISION_OBJETIVO = 10;
+/** Preguntas objetivo de la misión diaria (reparto entre asignaturas). */
+export const MISION_OBJETIVO = 20;
 export const PUNTOS_POR_ACIERTO = 10;
 
-/** Estrellas solo en misión (sobre el total respondido, normalmente 10). */
+/**
+ * Estrellas de la misión diaria.
+ * - Misión completa (≥20): 12–14 → 1, 15–17 → 2, 18–20 → 3.
+ * - Misión corta: mismos umbrales en % (60% / 80% / 100%).
+ */
 export function calcularEstrellas(aciertos: number, total: number): number {
   if (total <= 0) return 0;
-  // En misión corta (<10), escalamos el umbral de forma proporcional.
-  const ratio = aciertos / total;
+
   if (total >= MISION_OBJETIVO) {
-    if (aciertos >= 10) return 3;
-    if (aciertos >= 8) return 2;
-    if (aciertos >= 6) return 1;
+    if (aciertos >= 18) return 3;
+    if (aciertos >= 15) return 2;
+    if (aciertos >= 12) return 1;
     return 0;
   }
-  // Misión corta: mismos umbrales relativos (60% / 80% / 100%).
+
+  const ratio = aciertos / total;
   if (ratio >= 1) return 3;
   if (ratio >= 0.8) return 2;
   if (ratio >= 0.6) return 1;
@@ -43,7 +48,6 @@ export function esRespuestaCorrecta(
     return a === b;
   }
 
-  // multiple_choice: comparar texto normalizado
   return normalizarTexto(respuestaUsuario) === normalizarTexto(respuestaCorrecta);
 }
 
@@ -118,4 +122,17 @@ export function temaPredominante(preguntas: { tema_id: string }[]): string {
     }
   }
   return best;
+}
+
+/** Reparte `total` cupos entre `n` partes lo más equitativo posible. */
+export function repartirCupos(total: number, n: number): number[] {
+  if (n <= 0) return [];
+  const base = Math.floor(total / n);
+  let resto = total % n;
+  const cupos = Array.from({ length: n }, () => base);
+  for (let i = 0; i < n && resto > 0; i += 1) {
+    cupos[i] += 1;
+    resto -= 1;
+  }
+  return cupos;
 }

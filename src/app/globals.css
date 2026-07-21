@@ -10,12 +10,26 @@
   --color-fallo: #f0997b;
   --color-crema: #fff8ed;
 
-  --font-titulo: var(--font-fredoka);
-  --font-cuerpo: var(--font-nunito);
+  --font-titulo: var(--font-mali);
+  --font-cuerpo: var(--font-quicksand);
 }
 
 body {
   background: var(--color-crema);
   color: #1a1a1a;
-  font-family: var(--font-nunito), sans-serif;
+  font-family: var(--font-quicksand), sans-serif;
+}
+
+/**
+ * Halo del Sol — degradado radial cálido.
+ * Reutilizable: aplicar la clase en pantallas a medida que se rediseñen.
+ */
+.fondo-halo-sol {
+  background-color: #fff8ed;
+  background-image: radial-gradient(
+    circle at 50% 12%,
+    #fff3dc 0%,
+    #fff8ed 48%,
+    #fdefe2 100%
+  );
 }

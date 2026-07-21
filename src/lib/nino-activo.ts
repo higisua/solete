@@ -5,20 +5,23 @@ export const COOKIE_NINO_ACTIVO = "solete_nino_activo";
 
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 días
 
+export const opcionesCookieNino = {
+  httpOnly: true,
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+  maxAge: MAX_AGE_SECONDS,
+};
+
 export async function getNinoActivoId(): Promise<string | null> {
   const jar = await cookies();
   return jar.get(COOKIE_NINO_ACTIVO)?.value ?? null;
 }
 
+/** Solo llamar desde Server Actions o Route Handlers. */
 export async function setNinoActivoId(ninoId: string): Promise<void> {
   const jar = await cookies();
-  jar.set(COOKIE_NINO_ACTIVO, ninoId, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: MAX_AGE_SECONDS,
-  });
+  jar.set(COOKIE_NINO_ACTIVO, ninoId, opcionesCookieNino);
 }
 
 export async function clearNinoActivoId(): Promise<void> {

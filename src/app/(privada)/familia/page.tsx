@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cerrarSesion } from "@/app/actions/auth";
 import { CompletarFamiliaForm } from "@/components/CompletarFamiliaForm";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/auth-ui";
 import { PublicImage } from "@/components/PublicImage";
 import { createClient } from "@/lib/supabase/server";
 import { getFamiliaActual, getNinosDeMiFamilia } from "@/lib/familia";

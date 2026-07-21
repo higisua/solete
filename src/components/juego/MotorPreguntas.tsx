@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
   finalizarPartida,
@@ -8,11 +7,11 @@ import {
 } from "@/app/actions/partida";
 import { PreguntaMultiple } from "@/components/juego/PreguntaMultiple";
 import { PreguntaTrueFalse } from "@/components/juego/PreguntaTrueFalse";
+import { ResultadosPartida } from "@/components/juego/ResultadosPartida";
 import { TecladoNumerico } from "@/components/juego/TecladoNumerico";
 import {
   esRespuestaCorrecta,
   formatearRespuestaCorrecta,
-  mensajeAnimo,
   temaPredominante,
 } from "@/lib/juego/reglas";
 import type { ModoJuego, Pregunta } from "@/types/database";
@@ -25,6 +24,9 @@ type Props = {
   modo: ModoJuego;
   preguntasIniciales: Pregunta[];
   misionCorta: boolean;
+  misionDiariaId?: string | null;
+  hrefOtraVez?: string;
+  hrefCambiar?: string;
 };
 
 type Fase = "pregunta" | "feedback" | "resultados";
@@ -48,6 +50,9 @@ export function MotorPreguntas({
   modo,
   preguntasIniciales,
   misionCorta,
+  misionDiariaId = null,
+  hrefOtraVez,
+  hrefCambiar,
 }: Props) {
   const [cola, setCola] = useState<Pregunta[]>(preguntasIniciales);
   const [indice, setIndice] = useState(0);
@@ -165,6 +170,8 @@ export function MotorPreguntas({
       setFase("resultados");
       setResultado({
         puntos: 0,
+        diamantesGanados: 0,
+        diamantesTotales: null,
         estrellas: 0,
         aciertos: 0,
         total: 0,
@@ -184,6 +191,7 @@ export function MotorPreguntas({
         total: totalFinal,
         misionCorta,
         porTema: temas,
+        misionDiariaId,
       });
 
       if (!res.ok || !res.resultado) {
@@ -205,72 +213,24 @@ export function MotorPreguntas({
   // --- Resultados ---
   if (fase === "resultados") {
     const r = resultado;
-    const estrellas = r?.estrellas ?? 0;
-    const pts = r?.puntos ?? 0;
-    const ac = r?.aciertos ?? aciertos;
-    const tot = r?.total ?? respondidas;
-
     return (
-      <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10 text-center">
-        <h1 className="font-titulo text-3xl font-semibold text-sol">
-          {modo === "mision" ? "¡Misión terminada!" : "¡Descanso!"}
-        </h1>
-        <p className="mt-2 text-lg text-black/65">
-          {ninoNombre} · {asignaturaNombre}
-        </p>
-
-        {modo === "mision" ? (
-          <div className="mt-6 flex justify-center gap-2 text-4xl" aria-label={`${estrellas} estrellas`}>
-            {[1, 2, 3].map((n) => (
-              <span key={n} className={n <= estrellas ? "opacity-100" : "opacity-25"}>
-                ⭐
-              </span>
-            ))}
-          </div>
-        ) : null}
-
-        <p className="mt-4 font-titulo text-2xl text-mar">+{pts} puntos</p>
-        <p className="mt-1 text-lg text-black/70">
-          {ac} de {tot} aciertos
-        </p>
-        {misionCorta && modo === "mision" ? (
-          <p className="mt-2 text-sm text-black/50">
-            Había menos de 10 preguntas; misión más cortita.
-          </p>
-        ) : null}
-        <p className="mt-4 font-titulo text-xl text-sol">
-          {mensajeAnimo(modo, estrellas, ac, tot)}
-        </p>
-        {r?.rachaSumoHoy && r.rachaDias != null ? (
-          <p className="mt-2 text-base text-mar">
-            🔥 Racha: {r.rachaDias} {r.rachaDias === 1 ? "día" : "días"}
-          </p>
-        ) : null}
-        {errorGuardado ? (
-          <p className="mt-3 text-sm text-fallo">{errorGuardado}</p>
-        ) : null}
-
-        <div className="mt-8 flex flex-col gap-3">
-          <Link
-            href={`/jugar/${asignaturaId}/${modo}`}
-            className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-sol px-5 font-titulo text-lg font-semibold text-white"
-          >
-            Jugar otra vez
-          </Link>
-          <Link
-            href="/mundo"
-            className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-mar px-5 font-titulo text-lg font-semibold text-white"
-          >
-            Cambiar asignatura
-          </Link>
-          <Link
-            href="/entrada"
-            className="inline-flex min-h-12 items-center justify-center rounded-2xl border-2 border-sol bg-white px-5 font-titulo text-lg font-semibold text-sol"
-          >
-            Inicio
-          </Link>
-        </div>
-      </main>
+      <ResultadosPartida
+        modo={modo}
+        ninoNombre={ninoNombre}
+        asignaturaNombre={asignaturaNombre}
+        asignaturaId={asignaturaId}
+        estrellas={r?.estrellas ?? 0}
+        puntos={r?.puntos ?? 0}
+        diamantesGanados={r?.diamantesGanados ?? 0}
+        aciertos={r?.aciertos ?? aciertos}
+        total={r?.total ?? respondidas}
+        misionCorta={misionCorta}
+        rachaDias={r?.rachaDias ?? null}
+        rachaSumoHoy={r?.rachaSumoHoy ?? false}
+        errorGuardado={errorGuardado}
+        hrefOtraVez={hrefOtraVez}
+        hrefCambiar={hrefCambiar}
+      />
     );
   }
 
@@ -328,7 +288,7 @@ export function MotorPreguntas({
               La respuesta era: <strong>{textoCorrecto}</strong>
             </p>
           ) : (
-            <p className="mt-3 text-lg text-black/70">+10 puntos</p>
+            <p className="mt-3 text-lg text-black/70">¡Correcto!</p>
           )}
           <button
             type="button"

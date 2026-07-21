@@ -8,7 +8,7 @@ import {
   cambiarPin,
 } from "@/app/actions/zona-padres";
 import { cerrarSesion } from "@/app/actions/auth";
-import { Button, ErrorBox, Field, SuccessBox } from "@/components/ui";
+import { Button, ErrorBox, Field, SuccessBox } from "@/components/auth-ui";
 
 type Props = {
   nombreFamilia: string;

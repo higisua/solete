@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { unstable_rethrow } from "next/navigation";
-import { Button, ErrorBox, Field } from "@/components/ui";
+import { Button, ErrorBox, Field } from "@/components/auth-ui";
 import type { ActionResult } from "@/types/database";
 
 type Props = {

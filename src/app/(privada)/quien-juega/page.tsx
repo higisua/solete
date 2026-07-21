@@ -3,7 +3,6 @@ import { seleccionarNino } from "@/app/actions/juego";
 import { getNinosDeMiFamilia } from "@/lib/familia";
 import { AVATARES } from "@/lib/avatares";
 import { publicAsset } from "@/lib/public-asset";
-import { setNinoActivoId } from "@/lib/nino-activo";
 import Image from "next/image";
 
 export default async function QuienJuegaPage() {
@@ -14,8 +13,7 @@ export default async function QuienJuegaPage() {
   }
 
   if (ninos.length === 1) {
-    await setNinoActivoId(ninos[0].id);
-    redirect("/mundo");
+    redirect("/entrada");
   }
 
   return (

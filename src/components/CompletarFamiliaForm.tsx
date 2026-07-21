@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { unstable_rethrow } from "next/navigation";
 import { completarFamilia } from "@/app/actions/auth";
-import { Button, ErrorBox, Field } from "@/components/ui";
+import { Button, ErrorBox, Field } from "@/components/auth-ui";
 
 export function CompletarFamiliaForm({ email }: { email: string }) {
   const [error, setError] = useState<string | null>(null);

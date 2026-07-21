@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { unstable_rethrow } from "next/navigation";
 import { crearNino } from "@/app/actions/auth";
 import { AVATARES } from "@/lib/avatares";
-import { Button, ErrorBox, Field } from "@/components/ui";
+import { Button, ErrorBox, Field } from "@/components/auth-ui";
 
 type AvatarOpcion = {
   id: string;

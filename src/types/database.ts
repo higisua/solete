@@ -16,6 +16,8 @@ export type Nino = {
   creado_en: string;
   racha_dias?: number;
   ultima_mision_fecha?: string | null;
+  /** Requiere supabase/fase6_mision_diaria.sql */
+  diamantes?: number;
 };
 
 export type Asignatura = {
@@ -47,7 +49,22 @@ export type Pregunta = {
   creado_en: string;
 };
 
+/** mision = misión diaria; libre = práctica (sin recompensas). */
 export type ModoJuego = "mision" | "libre";
+
+export type MisionDiaria = {
+  id: string;
+  nino_id: string;
+  fecha: string;
+  completada: boolean;
+  aciertos: number;
+  total: number;
+  estrellas: number;
+  diamante_otorgado: boolean;
+  pregunta_ids: string[];
+  creada_en: string;
+  completada_en: string | null;
+};
 
 export type ActionResult =
   | { ok: true }
