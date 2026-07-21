@@ -13,6 +13,8 @@ export {
 } from "@/lib/juego/preguntas";
 
 export { obtenerMisionDiariaDeHoy, getResumenMisionHoy } from "@/lib/juego/mision-diaria";
+export { mesActualMadrid, parseMesParam } from "@/lib/juego/calendario";
+export { getMisionesCompletadasDelMes } from "@/lib/juego/calendario-datos";
 
 export {
   MISION_OBJETIVO,

@@ -42,7 +42,7 @@ const SECUNDARIAS: Array<{
   { nombre: "Práctica", href: "/practica", icono: BookOpen },
   { nombre: "Mi colección", href: "/pronto/coleccion", icono: LayoutGrid },
   { nombre: "Medallas", href: "/pronto/medallas", icono: Award },
-  { nombre: "Calendario", href: "/pronto/calendario", icono: CalendarDays },
+  { nombre: "Calendario", href: "/calendario", icono: CalendarDays },
 ];
 
 const btnCabecera =
