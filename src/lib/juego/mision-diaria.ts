@@ -40,6 +40,38 @@ function mapMision(row: Record<string, unknown>): MisionDiaria {
   };
 }
 
+export type ResumenMisionHoy = {
+  completada: boolean;
+  estrellasHoy: number;
+};
+
+/**
+ * Solo lectura: ¿la misión de hoy (Europe/Madrid) ya está completada?
+ * No crea ni regenera la fila (apto para la home).
+ */
+export async function getResumenMisionHoy(
+  ninoId: string,
+): Promise<ResumenMisionHoy> {
+  const supabase = await createClient();
+  const fecha = hoyMadridISO();
+
+  const { data, error } = await supabase
+    .from("misiones_diarias")
+    .select("completada, estrellas")
+    .eq("nino_id", ninoId)
+    .eq("fecha", fecha)
+    .maybeSingle();
+
+  if (error || !data) {
+    return { completada: false, estrellasHoy: 0 };
+  }
+
+  return {
+    completada: Boolean(data.completada),
+    estrellasHoy: data.completada ? Number(data.estrellas ?? 0) : 0,
+  };
+}
+
 /**
  * Obtiene o crea la misión de hoy (Europe/Madrid).
  * Si ya está completada, no regenera preguntas.
