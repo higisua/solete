@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Star } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   finalizarPartida,
   type ResultadoGuardado,
 } from "@/app/actions/partida";
+import { FeedbackCapa } from "@/components/juego/FeedbackCapa";
 import { PreguntaMultiple } from "@/components/juego/PreguntaMultiple";
 import { PreguntaTrueFalse } from "@/components/juego/PreguntaTrueFalse";
 import { ResultadosPartida } from "@/components/juego/ResultadosPartida";
@@ -29,9 +32,13 @@ type Props = {
   hrefCambiar?: string;
 };
 
-type Fase = "pregunta" | "feedback" | "resultados";
+type Fase = "pregunta" | "revelando" | "feedback" | "resultados";
 
 type ContadorTema = { temaId: string; aciertos: number; intentos: number };
+
+const MS_REVELAR = 500;
+const MS_FEEDBACK_ACIERTO = 900;
+const MS_FEEDBACK_FALLO = 1400;
 
 function shuffle<T>(items: T[]): T[] {
   const arr = [...items];
@@ -62,18 +69,23 @@ export function MotorPreguntas({
   const [fase, setFase] = useState<Fase>("pregunta");
   const [acertoUltima, setAcertoUltima] = useState(false);
   const [textoCorrecto, setTextoCorrecto] = useState("");
+  const [respuestaElegida, setRespuestaElegida] = useState<unknown>(null);
   const [numericValor, setNumericValor] = useState("");
   const [resultado, setResultado] = useState<ResultadoGuardado | null>(null);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const porTemaRef = useRef(porTema);
+  const aciertosRef = useRef(aciertos);
+  const respondidasRef = useRef(respondidas);
+  porTemaRef.current = porTema;
+  aciertosRef.current = aciertos;
+  respondidasRef.current = respondidas;
+
   const totalMision = preguntasIniciales.length;
   const preguntaActual = cola[indice] ?? null;
-
-  const barraTexto =
-    modo === "mision"
-      ? `Pregunta ${Math.min(respondidas + (fase === "resultados" ? 0 : 1), totalMision)} / ${totalMision}`
-      : `${respondidas} ${respondidas === 1 ? "pregunta" : "preguntas"}`;
+  const revelada = fase === "revelando" || fase === "feedback";
+  const numeroActual = Math.min(indice + 1, Math.max(totalMision, 1));
 
   function registrarTema(temaId: string, acierto: boolean) {
     setPorTema((prev) => {
@@ -105,6 +117,7 @@ export function MotorPreguntas({
       preguntaActual.respuesta,
     );
 
+    setRespuestaElegida(respuestaUsuario);
     setAcertoUltima(ok);
     setTextoCorrecto(
       formatearRespuestaCorrecta(preguntaActual.tipo, preguntaActual.respuesta),
@@ -112,8 +125,10 @@ export function MotorPreguntas({
     if (ok) setAciertos((a) => a + 1);
     setRespondidas((r) => r + 1);
     registrarTema(preguntaActual.tema_id, ok);
-    setFase("feedback");
-    setNumericValor("");
+    setFase("revelando");
+    setNumericValor(
+      preguntaActual.tipo === "numeric" ? String(respuestaUsuario ?? "") : "",
+    );
   }
 
   function siguiente() {
@@ -124,11 +139,12 @@ export function MotorPreguntas({
         return;
       }
       setIndice(siguienteIndice);
+      setRespuestaElegida(null);
+      setNumericValor("");
       setFase("pregunta");
       return;
     }
 
-    // Libre: avanzar; si se acaba el pool, rebarajar (pueden repetirse respecto a antes)
     const siguienteIndice = indice + 1;
     if (siguienteIndice >= cola.length) {
       setCola(shuffle(preguntasIniciales));
@@ -136,16 +152,20 @@ export function MotorPreguntas({
     } else {
       setIndice(siguienteIndice);
     }
+    setRespuestaElegida(null);
+    setNumericValor("");
     setFase("pregunta");
   }
 
-  function cerrarPartida(forzarPorTema?: ContadorTema[], forzarAciertos?: number, forzarTotal?: number) {
-    const temas = forzarPorTema ?? porTema;
-    const ac = forzarAciertos ?? aciertos;
-    // En feedback acabamos de sumar respondidas; usar el estado puede ir un tick atrasado
-    const tot = forzarTotal ?? respondidas;
+  function cerrarPartida(
+    forzarPorTema?: ContadorTema[],
+    forzarAciertos?: number,
+    forzarTotal?: number,
+  ) {
+    const temas = forzarPorTema ?? porTemaRef.current;
+    const ac = forzarAciertos ?? aciertosRef.current;
+    const tot = forzarTotal ?? respondidasRef.current;
 
-    // Recalcular desde temas si hace falta sincronía
     const aciertosCalc = temas.reduce((s, t) => s + t.aciertos, 0);
     const totalCalc = temas.reduce((s, t) => s + t.intentos, 0);
     const aciertosFinal = Math.max(ac, aciertosCalc);
@@ -154,8 +174,7 @@ export function MotorPreguntas({
     const preguntasUsadas =
       modo === "mision"
         ? preguntasIniciales.slice(0, totalFinal)
-        : // en libre usamos las del pool inicial para predominante aproximado
-          preguntasIniciales;
+        : preguntasIniciales;
 
     const temaId =
       temaPredominante(
@@ -206,11 +225,25 @@ export function MotorPreguntas({
   }
 
   function terminarLibre() {
-    // Si estamos en feedback, incluir esa respuesta ya contabilizada
     cerrarPartida();
   }
 
-  // --- Resultados ---
+  // Revelar opciones → feedback
+  useEffect(() => {
+    if (fase !== "revelando") return;
+    const t = window.setTimeout(() => setFase("feedback"), MS_REVELAR);
+    return () => window.clearTimeout(t);
+  }, [fase]);
+
+  // Feedback → auto-avance (sin botón Siguiente)
+  useEffect(() => {
+    if (fase !== "feedback") return;
+    const ms = acertoUltima ? MS_FEEDBACK_ACIERTO : MS_FEEDBACK_FALLO;
+    const t = window.setTimeout(() => siguiente(), ms);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- avance intencional al entrar en feedback
+  }, [fase, acertoUltima]);
+
   if (fase === "resultados") {
     const r = resultado;
     return (
@@ -236,7 +269,7 @@ export function MotorPreguntas({
 
   if (!preguntaActual) {
     return (
-      <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 text-center">
+      <main className="fondo-halo-sol mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 text-center">
         <p className="font-titulo text-2xl text-sol">No hay más preguntas</p>
         <button
           type="button"
@@ -249,84 +282,148 @@ export function MotorPreguntas({
     );
   }
 
+  const progresoPct =
+    modo === "mision"
+      ? (respondidas / Math.max(totalMision, 1)) * 100
+      : 0;
+
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 py-6">
-      <div className="flex items-center justify-between gap-3">
-        <p className="font-titulo text-base text-sol">{barraTexto}</p>
-        {modo === "libre" ? (
-          <button
-            type="button"
-            onClick={terminarLibre}
-            disabled={pending || respondidas === 0}
-            className="min-h-11 rounded-2xl bg-white px-3 font-titulo text-sm font-semibold text-sol shadow-sm disabled:opacity-40"
-          >
-            Terminar
-          </button>
-        ) : null}
+    <main className="fondo-halo-sol relative mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-8 pt-5">
+      {/* Cabecera */}
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          {modo === "mision" ? (
+            <>
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <p className="font-titulo text-base font-semibold text-sol">
+                  {numeroActual} / {totalMision}
+                </p>
+                <div
+                  className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 font-titulo text-sm font-semibold text-sol shadow-sm"
+                  aria-label={`${aciertos} aciertos`}
+                >
+                  <Star
+                    className="h-4 w-4 fill-limon stroke-sol"
+                    aria-hidden
+                  />
+                  {aciertos}
+                </div>
+              </div>
+              <div className="h-3.5 w-full overflow-hidden rounded-full bg-white shadow-inner">
+                <motion.div
+                  className="h-full rounded-full bg-mar"
+                  initial={false}
+                  animate={{ width: `${progresoPct}%` }}
+                  transition={{ type: "spring", stiffness: 120, damping: 20 }}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-titulo text-base font-semibold text-sol">
+                {respondidas}{" "}
+                {respondidas === 1 ? "pregunta" : "preguntas"}
+              </p>
+              <button
+                type="button"
+                onClick={terminarLibre}
+                disabled={pending || respondidas === 0 || revelada}
+                className="min-h-11 rounded-2xl bg-white px-3 font-titulo text-sm font-semibold text-sol shadow-sm disabled:opacity-40"
+              >
+                Terminar
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {modo === "mision" ? (
-        <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-white">
-          <div
-            className="h-full rounded-full bg-mar transition-all"
-            style={{ width: `${(respondidas / Math.max(totalMision, 1)) * 100}%` }}
-          />
-        </div>
-      ) : null}
-
-      {fase === "feedback" ? (
-        <div
-          className={`mt-8 flex flex-1 flex-col items-center justify-center rounded-3xl px-4 py-10 text-center ${
-            acertoUltima ? "bg-acierto/20" : "bg-fallo/25"
-          }`}
-        >
-          <p className="font-titulo text-3xl font-semibold text-sol">
-            {acertoUltima ? "¡Muy bien!" : "¡Casi!"}
-          </p>
-          {!acertoUltima ? (
-            <p className="mt-3 text-lg text-black/70">
-              La respuesta era: <strong>{textoCorrecto}</strong>
-            </p>
-          ) : (
-            <p className="mt-3 text-lg text-black/70">¡Correcto!</p>
-          )}
-          <button
-            type="button"
-            onClick={siguiente}
-            className="mt-8 min-h-14 w-full max-w-xs rounded-2xl bg-sol font-titulo text-xl font-semibold text-white"
+      {/* Pregunta + respuestas */}
+      <div className="relative mt-6 flex flex-1 flex-col">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={preguntaActual.id + String(indice)}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22 }}
+            className="flex flex-1 flex-col"
           >
-            {modo === "mision" && indice + 1 >= cola.length ? "Ver resultados" : "Siguiente"}
-          </button>
-        </div>
-      ) : (
-        <div className="mt-8 flex flex-1 flex-col">
-          <h1 className="font-titulo text-2xl font-semibold leading-snug text-sol sm:text-3xl">
-            {preguntaActual.enunciado}
-          </h1>
+            <h1 className="font-titulo text-[1.65rem] font-semibold leading-[1.35] text-sol sm:text-3xl sm:leading-snug">
+              {preguntaActual.enunciado}
+            </h1>
 
-          <div className="mt-8">
-            {preguntaActual.tipo === "numeric" ? (
-              <TecladoNumerico
-                valor={numericValor}
-                onChange={setNumericValor}
-                onConfirmar={() => {
-                  if (!numericValor.trim()) return;
-                  evaluar(numericValor);
-                }}
-              />
-            ) : null}
-            {preguntaActual.tipo === "true_false" ? (
-              <PreguntaTrueFalse onElegir={(v) => evaluar(v)} />
-            ) : null}
-            {preguntaActual.tipo === "multiple_choice" ? (
-              <PreguntaMultiple
-                opciones={preguntaActual.opciones ?? []}
-                onElegir={(v) => evaluar(v)}
-              />
-            ) : null}
-          </div>
-        </div>
-      )}
+            <div className="mt-8 flex-1">
+              {preguntaActual.tipo === "numeric" ? (
+                <TecladoNumerico
+                  valor={
+                    revelada && numericValor
+                      ? numericValor
+                      : numericValor
+                  }
+                  onChange={setNumericValor}
+                  onConfirmar={() => {
+                    if (!numericValor.trim()) return;
+                    evaluar(numericValor);
+                  }}
+                  disabled={revelada}
+                  revelada={revelada}
+                  acerto={revelada ? acertoUltima : null}
+                />
+              ) : null}
+              {preguntaActual.tipo === "true_false" ? (
+                <PreguntaTrueFalse
+                  onElegir={(v) => evaluar(v)}
+                  disabled={revelada}
+                  revelada={revelada}
+                  elegida={
+                    typeof respuestaElegida === "boolean"
+                      ? respuestaElegida
+                      : null
+                  }
+                  correcta={
+                    typeof preguntaActual.respuesta === "boolean"
+                      ? preguntaActual.respuesta
+                      : preguntaActual.respuesta === "true" ||
+                          preguntaActual.respuesta === true
+                        ? true
+                        : preguntaActual.respuesta === "false" ||
+                            preguntaActual.respuesta === false
+                          ? false
+                          : null
+                  }
+                />
+              ) : null}
+              {preguntaActual.tipo === "multiple_choice" ? (
+                <PreguntaMultiple
+                  opciones={preguntaActual.opciones ?? []}
+                  onElegir={(v) => evaluar(v)}
+                  disabled={revelada}
+                  revelada={revelada}
+                  elegida={
+                    typeof respuestaElegida === "string"
+                      ? respuestaElegida
+                      : null
+                  }
+                  correcta={
+                    typeof preguntaActual.respuesta === "string"
+                      ? preguntaActual.respuesta
+                      : String(preguntaActual.respuesta ?? "")
+                  }
+                />
+              ) : null}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {fase === "feedback" ? (
+            <FeedbackCapa
+              acierto={acertoUltima}
+              textoCorrecto={textoCorrecto}
+            />
+          ) : null}
+        </AnimatePresence>
+      </div>
     </main>
   );
 }
