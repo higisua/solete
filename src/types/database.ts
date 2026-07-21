@@ -66,6 +66,35 @@ export type MisionDiaria = {
   completada_en: string | null;
 };
 
+/** Fila de medallas_nino (desbloqueo). Catálogo en código. */
+export type MedallaNino = {
+  id: string;
+  nino_id: string;
+  medalla_id: string;
+  desbloqueada_en: string;
+  diamantes_otorgados: number;
+};
+
+/** Fila de cromos_nino (posesión). Catálogo en código. */
+export type CromoNino = {
+  id: string;
+  nino_id: string;
+  cromo_id: string;
+  obtenido_en: string;
+  via: "compra" | "sobre";
+  diamantes_gastados: number;
+};
+
+/** Fila de practica_diaria (conteo + diamante topado). */
+export type PracticaDiaria = {
+  id: string;
+  nino_id: string;
+  fecha: string;
+  preguntas: number;
+  diamante_otorgado: boolean;
+  actualizado_en: string;
+};
+
 export type ActionResult =
   | { ok: true }
   | { ok: false; error: string };

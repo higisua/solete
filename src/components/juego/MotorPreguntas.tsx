@@ -197,6 +197,7 @@ export function MotorPreguntas({
         rachaDias: null,
         rachaSumoHoy: false,
         misionCorta,
+        medallasNuevas: [],
       });
       return;
     }
@@ -260,6 +261,7 @@ export function MotorPreguntas({
         misionCorta={misionCorta}
         rachaDias={r?.rachaDias ?? null}
         rachaSumoHoy={r?.rachaSumoHoy ?? false}
+        medallasNuevas={r?.medallasNuevas ?? []}
         errorGuardado={errorGuardado}
         hrefOtraVez={hrefOtraVez}
         hrefCambiar={hrefCambiar}

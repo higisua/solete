@@ -6,7 +6,9 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Aparecer, Boton, Pantalla } from "@/components/ui";
 import { Confeti } from "@/components/juego/Confeti";
+import { FanfarriaNuevaMedalla } from "@/components/juego/FanfarriaNuevaMedalla";
 import { MISION_OBJETIVO, mensajeAnimo } from "@/lib/juego/reglas";
+import type { MedallaDesbloqueada } from "@/lib/juego/medallas";
 import type { ModoJuego } from "@/types/database";
 import { publicAssetClient } from "@/lib/public-asset-client";
 
@@ -23,6 +25,7 @@ type Props = {
   misionCorta: boolean;
   rachaDias: number | null;
   rachaSumoHoy: boolean;
+  medallasNuevas?: MedallaDesbloqueada[];
   errorGuardado: string | null;
   hrefOtraVez?: string;
   hrefCambiar?: string;
@@ -40,6 +43,7 @@ export function ResultadosPartida({
   misionCorta,
   rachaDias,
   rachaSumoHoy,
+  medallasNuevas = [],
   errorGuardado,
   hrefOtraVez,
   hrefCambiar,
@@ -52,18 +56,53 @@ export function ResultadosPartida({
   const practicar = hrefCambiar ?? "/mundo";
   const reducir = useReducedMotion();
   const [mostrarDiamante, setMostrarDiamante] = useState(modo !== "mision");
+  const [fanfarria, setFanfarria] = useState(false);
+  const [indiceMedalla, setIndiceMedalla] = useState(0);
+  const [fanfarriaHecha, setFanfarriaHecha] = useState(
+    () => medallasNuevas.length === 0,
+  );
 
   useEffect(() => {
     if (modo !== "mision") return;
     // Tras las 3 estrellas (~0.35 + 3*0.28)
-    const t = window.setTimeout(() => setMostrarDiamante(true), reducir ? 200 : 1200);
+    const t = window.setTimeout(
+      () => setMostrarDiamante(true),
+      reducir ? 200 : 1200,
+    );
     return () => window.clearTimeout(t);
   }, [modo, reducir]);
+
+  useEffect(() => {
+    if (modo !== "mision" || !mostrarDiamante) return;
+    if (medallasNuevas.length === 0) return;
+    const t = window.setTimeout(
+      () => setFanfarria(true),
+      reducir ? 150 : 900,
+    );
+    return () => window.clearTimeout(t);
+  }, [modo, mostrarDiamante, medallasNuevas.length, reducir]);
+
+  function continuarMedalla() {
+    if (indiceMedalla < medallasNuevas.length - 1) {
+      setIndiceMedalla((i) => i + 1);
+      return;
+    }
+    setFanfarria(false);
+    setFanfarriaHecha(true);
+  }
 
   if (modo === "mision") {
     return (
       <Pantalla centrar className="fondo-halo-sol overflow-hidden">
         <Confeti />
+
+        {fanfarria ? (
+          <FanfarriaNuevaMedalla
+            medallas={medallasNuevas}
+            indice={indiceMedalla}
+            onContinuar={continuarMedalla}
+          />
+        ) : null}
 
         <div className="relative z-20 flex flex-col items-center text-center">
           <Aparecer>
@@ -148,7 +187,7 @@ export function ResultadosPartida({
                 <div className="flex items-center gap-2 font-titulo text-xl font-semibold text-mar">
                   <Gem className="h-6 w-6 stroke-[1.75]" aria-hidden />
                   {diamantesGanados > 0
-                    ? "+1 diamante por jugar hoy"
+                    ? "+2 diamantes por jugar hoy"
                     : "¡Misión del día hecha!"}
                 </div>
                 <p className="font-titulo text-base text-sol">
@@ -169,14 +208,18 @@ export function ResultadosPartida({
             </p>
           ) : null}
 
-          <Aparecer delay={0.35} className="mt-10 flex w-full max-w-sm flex-col gap-3">
-            <Boton href={practicar} variant="primario">
-              A practicar
-            </Boton>
-            <Boton href="/entrada" variant="secundario">
-              Volver a casa
-            </Boton>
-          </Aparecer>
+          {mostrarDiamante && fanfarriaHecha ? (
+            <Aparecer delay={0.1} className="mt-10 flex w-full max-w-sm flex-col gap-3">
+              <Boton href={practicar} variant="primario">
+                A practicar
+              </Boton>
+              <Boton href="/entrada" variant="secundario">
+                Volver a casa
+              </Boton>
+            </Aparecer>
+          ) : (
+            <div className="mt-10 min-h-[7.5rem] w-full max-w-sm" aria-hidden />
+          )}
         </div>
       </Pantalla>
     );

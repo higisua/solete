@@ -249,15 +249,26 @@ export async function crearNino(formData: FormData): Promise<ActionResult> {
     return { ok: false, error: "No encontramos tu familia. Completa el alta familiar primero." };
   }
 
-  const { error } = await supabase.from("ninos").insert({
-    familia_id: familia.id,
-    nombre,
-    curso,
-    avatar,
-  });
+  const { data: creado, error } = await supabase
+    .from("ninos")
+    .insert({
+      familia_id: familia.id,
+      nombre,
+      curso,
+      avatar,
+    })
+    .select("id")
+    .single();
 
-  if (error) {
+  if (error || !creado) {
     return { ok: false, error: "No se pudo guardar el perfil. Inténtalo de nuevo." };
+  }
+
+  try {
+    const { otorgarMedallaBienvenida } = await import("@/lib/juego/medallas");
+    await otorgarMedallaBienvenida(creado.id);
+  } catch (err) {
+    console.warn("[crearNino] medalla bienvenida:", err);
   }
 
   redirect(siguiente);

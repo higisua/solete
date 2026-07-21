@@ -3,6 +3,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { ayerMadridISO, hoyMadridISO } from "@/lib/fecha-madrid";
 import { getNinoDeMiFamilia } from "@/lib/juego";
+import { DIAMANTES_MISION_DIARIA } from "@/lib/juego/economia";
+import {
+  evaluarMedallasTrasMision,
+  evaluarMedallasTrasPractica,
+} from "@/lib/juego/medallas";
+import type { MedallaDesbloqueada } from "@/lib/juego/medallas";
+import {
+  registrarPracticaDelDia,
+  totalPreguntasPractica,
+} from "@/lib/juego/practica-diaria";
 import { calcularEstrellas, puntosPorAciertos } from "@/lib/juego/reglas";
 import type { ActionResult, ModoJuego } from "@/types/database";
 
@@ -13,7 +23,7 @@ export type DetalleTemaPartida = {
 };
 
 export type ResultadoGuardado = {
-  /** En misión: diamantes ganados en esta partida (0 o 1). En práctica: 0. */
+  /** Diamantes ganados en esta partida (misión/práctica + medallas). */
   puntos: number;
   diamantesGanados: number;
   diamantesTotales: number | null;
@@ -23,6 +33,8 @@ export type ResultadoGuardado = {
   rachaDias: number | null;
   rachaSumoHoy: boolean;
   misionCorta: boolean;
+  /** Medallas desbloqueadas en esta partida (fanfarria en resultados). */
+  medallasNuevas: MedallaDesbloqueada[];
 };
 
 type PayloadFinalizar = {
@@ -41,12 +53,11 @@ type PayloadFinalizar = {
  * Guarda el resultado de una partida.
  *
  * Misión diaria:
- * - Sesión + progreso (aciertos/intentos; puntos internos de tema; sin estrellas en progreso).
- * - Estrellas + diamante (+1 máx/día) en misiones_diarias / ninos.diamantes.
- * - Racha con día Europe/Madrid.
+ * - Sesión + progreso; estrellas; +2💎 máx/día Madrid; racha; medallas de misión.
  *
  * Práctica (modo libre):
- * - Sesión + progreso aciertos/intentos (sin puntos, estrellas, diamantes ni racha).
+ * - Sesión + progreso; conteo practica_diaria; +1💎 al llegar a 10 preguntas/día
+ *   (máx. 1/día); medallas de práctica.
  */
 export async function finalizarPartida(
   payload: PayloadFinalizar,
@@ -136,13 +147,13 @@ export async function finalizarPartida(
   let diamantesTotales: number | null = nino.diamantes ?? 0;
   let rachaDias: number | null = nino.racha_dias ?? null;
   let rachaSumoHoy = false;
+  let medallasNuevas: MedallaDesbloqueada[] = [];
 
-  // 3) Misión diaria: cerrar fila + diamante + racha (Europe/Madrid)
+  // 3) Misión diaria: cerrar fila + diamantes + racha (Europe/Madrid)
   if (esMision && payload.total > 0) {
     const hoy = hoyMadridISO();
     const ayer = ayerMadridISO();
 
-    // Evitar completar dos veces el mismo día
     const { data: misionHoy } = await supabase
       .from("misiones_diarias")
       .select("*")
@@ -158,6 +169,8 @@ export async function finalizarPartida(
     }
 
     const misionId = payload.misionDiariaId || misionHoy?.id;
+    let misionPersistida = false;
+
     if (misionId) {
       const { error: misErr } = await supabase
         .from("misiones_diarias")
@@ -178,7 +191,8 @@ export async function finalizarPartida(
           misErr.message,
         );
       } else {
-        diamantesGanados = 1;
+        diamantesGanados = DIAMANTES_MISION_DIARIA;
+        misionPersistida = true;
       }
     } else {
       const { error: insMis } = await supabase.from("misiones_diarias").insert({
@@ -194,12 +208,13 @@ export async function finalizarPartida(
       if (insMis) {
         console.warn("[finalizarPartida] insert mision", insMis.message);
       } else {
-        diamantesGanados = 1;
+        diamantesGanados = DIAMANTES_MISION_DIARIA;
+        misionPersistida = true;
       }
     }
 
-    if (diamantesGanados === 1) {
-      const nuevoTotal = (nino.diamantes ?? 0) + 1;
+    if (diamantesGanados === DIAMANTES_MISION_DIARIA) {
+      const nuevoTotal = (nino.diamantes ?? 0) + DIAMANTES_MISION_DIARIA;
       const { error: diamErr } = await supabase
         .from("ninos")
         .update({ diamantes: nuevoTotal })
@@ -217,46 +232,95 @@ export async function finalizarPartida(
       }
     }
 
-    // Racha
-    const ultima = nino.ultima_mision_fecha
-      ? String(nino.ultima_mision_fecha).slice(0, 10)
-      : null;
-
     let nuevaRacha = nino.racha_dias ?? 0;
+    if (misionPersistida) {
+      const ultima = nino.ultima_mision_fecha
+        ? String(nino.ultima_mision_fecha).slice(0, 10)
+        : null;
 
-    if (ultima === hoy) {
-      rachaSumoHoy = false;
-    } else if (ultima === ayer) {
-      nuevaRacha = (nino.racha_dias ?? 0) + 1;
-      rachaSumoHoy = true;
-    } else {
-      nuevaRacha = 1;
-      rachaSumoHoy = true;
-    }
-
-    if (rachaSumoHoy || ultima !== hoy) {
-      const { error: rachaError } = await supabase
-        .from("ninos")
-        .update({
-          racha_dias: ultima === hoy ? (nino.racha_dias ?? 0) : nuevaRacha,
-          ultima_mision_fecha: hoy,
-        })
-        .eq("id", payload.ninoId);
-
-      if (rachaError) {
-        console.warn("[finalizarPartida] racha:", rachaError.message);
-        rachaDias = null;
+      if (ultima === hoy) {
+        rachaSumoHoy = false;
+      } else if (ultima === ayer) {
+        nuevaRacha = (nino.racha_dias ?? 0) + 1;
+        rachaSumoHoy = true;
       } else {
-        rachaDias = ultima === hoy ? (nino.racha_dias ?? 0) : nuevaRacha;
+        nuevaRacha = 1;
+        rachaSumoHoy = true;
       }
-    } else {
-      rachaDias = nino.racha_dias ?? 0;
+
+      if (rachaSumoHoy || ultima !== hoy) {
+        const { error: rachaError } = await supabase
+          .from("ninos")
+          .update({
+            racha_dias: ultima === hoy ? (nino.racha_dias ?? 0) : nuevaRacha,
+            ultima_mision_fecha: hoy,
+          })
+          .eq("id", payload.ninoId);
+
+        if (rachaError) {
+          console.warn("[finalizarPartida] racha:", rachaError.message);
+          rachaDias = null;
+        } else {
+          rachaDias = ultima === hoy ? (nino.racha_dias ?? 0) : nuevaRacha;
+        }
+      } else {
+        rachaDias = nino.racha_dias ?? 0;
+      }
+
+      try {
+        const evalMedallas = await evaluarMedallasTrasMision({
+          ninoId: payload.ninoId,
+          aciertos: payload.aciertos,
+          total: payload.total,
+          estrellas,
+          rachaDias: rachaDias ?? nuevaRacha,
+        });
+        medallasNuevas = evalMedallas.medallas;
+        if (evalMedallas.diamantesExtra > 0) {
+          diamantesGanados += evalMedallas.diamantesExtra;
+          const { data: ninoAct } = await supabase
+            .from("ninos")
+            .select("diamantes")
+            .eq("id", payload.ninoId)
+            .maybeSingle();
+          diamantesTotales = ninoAct?.diamantes ?? diamantesTotales;
+        }
+      } catch (err) {
+        console.warn("[finalizarPartida] medallas:", err);
+      }
     }
   }
 
-  if (esPractica) {
-    diamantesGanados = 0;
-    diamantesTotales = nino.diamantes ?? null;
+  // 4) Práctica: conteo diario + diamante topado + medallas de práctica
+  if (esPractica && payload.total > 0) {
+    const reg = await registrarPracticaDelDia(
+      payload.ninoId,
+      payload.total,
+      nino.diamantes ?? 0,
+    );
+    diamantesGanados = reg.diamanteGanado;
+    diamantesTotales = reg.diamantesTotales;
+
+    try {
+      const preguntasTotales = await totalPreguntasPractica(payload.ninoId);
+      const evalMedallas = await evaluarMedallasTrasPractica({
+        ninoId: payload.ninoId,
+        preguntasHoy: reg.preguntasHoy,
+        preguntasTotales,
+      });
+      medallasNuevas = evalMedallas.medallas;
+      if (evalMedallas.diamantesExtra > 0) {
+        diamantesGanados += evalMedallas.diamantesExtra;
+        const { data: ninoAct } = await supabase
+          .from("ninos")
+          .select("diamantes")
+          .eq("id", payload.ninoId)
+          .maybeSingle();
+        diamantesTotales = ninoAct?.diamantes ?? diamantesTotales;
+      }
+    } catch (err) {
+      console.warn("[finalizarPartida] medallas práctica:", err);
+    }
   }
 
   return {
@@ -271,6 +335,7 @@ export async function finalizarPartida(
       rachaDias,
       rachaSumoHoy,
       misionCorta: payload.misionCorta,
+      medallasNuevas,
     },
   };
 }

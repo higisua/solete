@@ -15,6 +15,55 @@ export {
 export { obtenerMisionDiariaDeHoy, getResumenMisionHoy } from "@/lib/juego/mision-diaria";
 export { mesActualMadrid, parseMesParam } from "@/lib/juego/calendario";
 export { getMisionesCompletadasDelMes } from "@/lib/juego/calendario-datos";
+export {
+  CATALOGO_MEDALLAS,
+  type MedallaId,
+  type MedallaDef,
+} from "@/lib/juego/medallas-catalogo";
+export {
+  evaluarMedallasTrasMision,
+  evaluarMedallasTrasPractica,
+  otorgarMedallaBienvenida,
+  type MedallaDesbloqueada,
+} from "@/lib/juego/medallas";
+export {
+  DIAMANTES_MISION_DIARIA,
+  DIAMANTES_PRACTICA_DIARIA,
+  PRACTICA_PREGUNTAS_PARA_DIAMANTE,
+} from "@/lib/juego/economia";
+export {
+  registrarPracticaDelDia,
+  totalPreguntasPractica,
+  preguntasPracticaHoy,
+} from "@/lib/juego/practica-diaria";
+export {
+  getMedallasVista,
+  type MedallaVistaItem,
+  type MedallasVistaData,
+} from "@/lib/juego/medallas-vista";
+export {
+  CROMOS_ECONOMIA,
+  CATALOGO_CROMOS,
+  TEMATICAS_CROMOS,
+  precioPorRareza,
+  devolucionPorRepetido,
+  cromoPorId,
+  type RarezaCromo,
+  type TematicaId,
+  type CromoDef,
+  type TematicaDef,
+} from "@/lib/juego/cromos-catalogo";
+export {
+  comprarCromo,
+  abrirSobre,
+  getColeccionVista,
+  type CromoObtenido,
+  type ResultadoCompraCromo,
+  type ResultadoSobre,
+  type ColeccionVista,
+  type TematicaAlbum,
+  type CromoAlbumItem,
+} from "@/lib/juego/cromos";
 
 export {
   MISION_OBJETIVO,

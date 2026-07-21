@@ -141,15 +141,26 @@ export async function crearNinoZonaPadres(formData: FormData): Promise<ActionRes
   if (!familia) return { ok: false, error: "Sin familia." };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("ninos").insert({
-    familia_id: familia.id,
-    nombre,
-    curso,
-    avatar,
-  });
+  const { data: creado, error } = await supabase
+    .from("ninos")
+    .insert({
+      familia_id: familia.id,
+      nombre,
+      curso,
+      avatar,
+    })
+    .select("id")
+    .single();
 
-  if (error) {
+  if (error || !creado) {
     return { ok: false, error: "No se pudo crear el perfil." };
+  }
+
+  try {
+    const { otorgarMedallaBienvenida } = await import("@/lib/juego/medallas");
+    await otorgarMedallaBienvenida(creado.id);
+  } catch (err) {
+    console.warn("[crearNinoZonaPadres] medalla bienvenida:", err);
   }
 
   redirect("/zona-padres/hijos");

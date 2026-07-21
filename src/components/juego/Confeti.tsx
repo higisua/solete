@@ -3,14 +3,26 @@
 import { useMemo } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
-const COLORES = ["#D85A30", "#1D9E75", "#FAC775", "#F0997B", "#5DCAA5", "#FFF3DC"];
+const COLORES_DEFAULT = [
+  "#D85A30",
+  "#1D9E75",
+  "#FAC775",
+  "#F0997B",
+  "#5DCAA5",
+  "#FFF3DC",
+];
 
 type Props = {
   cantidad?: number;
+  /** Paleta opcional (p.ej. confeti de rareza). */
+  colores?: string[];
 };
 
-/** Confeti ligero con colores de marca. Solo decorativo. */
-export function Confeti({ cantidad = 36 }: Props) {
+/** Confeti ligero. Solo decorativo. */
+export function Confeti({
+  cantidad = 36,
+  colores = COLORES_DEFAULT,
+}: Props) {
   const reducir = useReducedMotion();
   const piezas = useMemo(
     () =>
@@ -19,12 +31,12 @@ export function Confeti({ cantidad = 36 }: Props) {
         left: `${(i * 17 + 7) % 100}%`,
         delay: (i % 10) * 0.12,
         duracion: 2.4 + (i % 5) * 0.35,
-        color: COLORES[i % COLORES.length],
+        color: colores[i % colores.length]!,
         rotacion: (i * 47) % 360,
         ancho: 6 + (i % 4) * 2,
         alto: 8 + (i % 3) * 3,
       })),
-    [cantidad],
+    [cantidad, colores],
   );
 
   if (reducir) return null;
