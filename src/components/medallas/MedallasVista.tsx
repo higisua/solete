@@ -79,38 +79,41 @@ function TarjetaMedalla({ item }: { item: MedallaVistaItem }) {
         {item.nombre}
       </h2>
 
-      {conseguida ? (
-        <p className="mt-2 inline-flex items-center gap-1 font-titulo text-sm font-semibold text-mar">
-          <Gem className="h-3.5 w-3.5 stroke-[2]" aria-hidden />+
-          {item.diamantes}
-        </p>
-      ) : (
-        <>
-          <p className="mt-2 font-cuerpo text-xs leading-snug text-black/45">
-            {item.descripcion}
+      <p className="mt-2 font-cuerpo text-xs leading-snug text-black/45">
+        {item.descripcion}
+      </p>
+
+      <p
+        className={cn(
+          "mt-2 inline-flex items-center gap-1 font-titulo text-sm font-semibold",
+          conseguida ? "text-mar" : "text-black/50",
+        )}
+        aria-label={`${item.diamantes} ${item.diamantes === 1 ? "diamante" : "diamantes"}`}
+      >
+        <Gem className="h-3.5 w-3.5 stroke-[2]" aria-hidden />+
+        {item.diamantes}
+      </p>
+
+      {!conseguida && progreso ? (
+        <div className="mt-3 w-full px-1">
+          <div
+            className="h-2 overflow-hidden rounded-full bg-black/[0.06]"
+            role="progressbar"
+            aria-valuenow={progreso.actual}
+            aria-valuemin={0}
+            aria-valuemax={progreso.meta}
+            aria-label={`${progreso.actual} de ${progreso.meta}`}
+          >
+            <div
+              className="h-full rounded-full bg-mar transition-[width] duration-500"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <p className="mt-1 font-cuerpo text-[11px] text-black/40">
+            {progreso.actual}/{progreso.meta}
           </p>
-          {progreso ? (
-            <div className="mt-3 w-full px-1">
-              <div
-                className="h-2 overflow-hidden rounded-full bg-black/[0.06]"
-                role="progressbar"
-                aria-valuenow={progreso.actual}
-                aria-valuemin={0}
-                aria-valuemax={progreso.meta}
-                aria-label={`${progreso.actual} de ${progreso.meta}`}
-              >
-                <div
-                  className="h-full rounded-full bg-mar transition-[width] duration-500"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <p className="mt-1 font-cuerpo text-[11px] text-black/40">
-                {progreso.actual}/{progreso.meta}
-              </p>
-            </div>
-          ) : null}
-        </>
-      )}
+        </div>
+      ) : null}
     </article>
   );
 }

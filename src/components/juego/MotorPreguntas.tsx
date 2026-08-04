@@ -18,6 +18,7 @@ import {
   temaPredominante,
 } from "@/lib/juego/reglas";
 import type { ModoJuego, Pregunta } from "@/types/database";
+import type { NivelPractica } from "@/lib/juego/economia";
 
 type Props = {
   ninoId: string;
@@ -30,6 +31,8 @@ type Props = {
   misionDiariaId?: string | null;
   hrefOtraVez?: string;
   hrefCambiar?: string;
+  /** Solo práctica. */
+  nivelPractica?: NivelPractica;
 };
 
 type Fase = "pregunta" | "revelando" | "feedback" | "resultados";
@@ -60,6 +63,7 @@ export function MotorPreguntas({
   misionDiariaId = null,
   hrefOtraVez,
   hrefCambiar,
+  nivelPractica = "normal",
 }: Props) {
   const [cola, setCola] = useState<Pregunta[]>(preguntasIniciales);
   const [indice, setIndice] = useState(0);
@@ -212,6 +216,7 @@ export function MotorPreguntas({
         misionCorta,
         porTema: temas,
         misionDiariaId,
+        nivelPractica: modo === "libre" ? nivelPractica : undefined,
       });
 
       if (!res.ok || !res.resultado) {

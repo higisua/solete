@@ -79,19 +79,28 @@ export async function getPreguntasPorIds(ids: string[]): Promise<Pregunta[]> {
 }
 
 /**
- * Práctica (antes «libre»): pool infinito de una asignatura,
- * opcionalmente filtrado a un tema concreto (debe estar activo).
+ * Práctica: pool de una asignatura (opcionalmente un tema).
+ * En nivel extremo prioriza preguntas difíciles (dificultad 3, luego ≥2).
  */
 export async function getPreguntasParaPractica(
   ninoId: string,
   asignaturaId: string,
   temaId?: string | null,
+  nivel: "normal" | "extremo" = "normal",
 ): Promise<Pregunta[]> {
   const temas = await getTemasActivosDeAsignatura(ninoId, asignaturaId);
   const filtrados = temaId ? temas.filter((t) => t.id === temaId) : temas;
   if (filtrados.length === 0) return [];
 
   const pool = await getPreguntasDeTemas(filtrados.map((t) => t.id));
+  if (nivel !== "extremo") {
+    return shuffle(pool);
+  }
+
+  const d3 = pool.filter((p) => p.dificultad >= 3);
+  if (d3.length >= 5) return shuffle(d3);
+  const d2 = pool.filter((p) => p.dificultad >= 2);
+  if (d2.length > 0) return shuffle(d2);
   return shuffle(pool);
 }
 

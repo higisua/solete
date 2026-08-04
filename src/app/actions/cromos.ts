@@ -2,11 +2,13 @@
 
 import {
   abrirSobre,
+  abrirSobreGrande,
   comprarCromo,
   getColeccionVista,
   type ColeccionVista,
   type ResultadoCompraCromo,
   type ResultadoSobre,
+  type ResultadoSobreGrande,
 } from "@/lib/juego/cromos";
 import { getNinoActivoValidado } from "@/lib/juego/nino";
 
@@ -24,7 +26,7 @@ export async function comprarCromoAction(
 }
 
 /**
- * Abre un sobre sorpresa para el niño activo.
+ * Abre un sobre sorpresa (1 cromo) para el niño activo.
  */
 export async function abrirSobreAction(): Promise<ResultadoSobre> {
   const nino = await getNinoActivoValidado();
@@ -32,6 +34,17 @@ export async function abrirSobreAction(): Promise<ResultadoSobre> {
     return { ok: false, error: "No hay un perfil activo." };
   }
   return abrirSobre(nino.id);
+}
+
+/**
+ * Abre un sobre grande (3 cromos) para el niño activo.
+ */
+export async function abrirSobreGrandeAction(): Promise<ResultadoSobreGrande> {
+  const nino = await getNinoActivoValidado();
+  if (!nino) {
+    return { ok: false, error: "No hay un perfil activo." };
+  }
+  return abrirSobreGrande(nino.id);
 }
 
 /**

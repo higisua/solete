@@ -45,6 +45,22 @@ export type ResultadoSobre =
     }
   | { ok: false; error: string };
 
+export type ItemSobre = {
+  cromo: CromoObtenido;
+  repetido: boolean;
+  diamantesDevueltos: number;
+};
+
+export type ResultadoSobreGrande =
+  | {
+      ok: true;
+      items: ItemSobre[];
+      diamantesGastados: number;
+      diamantesDevueltos: number;
+      diamantesTotales: number;
+    }
+  | { ok: false; error: string };
+
 export type CromoAlbumItem = CromoDef & {
   loTiene: boolean;
   obtenidoEn: string | null;
@@ -100,13 +116,68 @@ function elegirRarezaSobre(): RarezaCromo {
   return "especial";
 }
 
-function elegirCromoDeRareza(rareza: RarezaCromo): CromoDef {
-  const pool = cromosPorRareza(rareza);
-  if (pool.length === 0) {
-    // Fallback defensivo: cualquier cromo del catálogo
-    return CATALOGO_CROMOS[randomInt(CATALOGO_CROMOS.length)]!;
+function elegirCromoDeRareza(
+  rareza: RarezaCromo,
+  excluir: Set<string> = new Set(),
+): CromoDef {
+  const pool = cromosPorRareza(rareza).filter((c) => !excluir.has(c.id));
+  if (pool.length > 0) {
+    return pool[randomInt(pool.length)]!;
   }
-  return pool[randomInt(pool.length)]!;
+  // Si esa rareza está agotada (todos excluidos), cualquier del catálogo libre
+  const libres = CATALOGO_CROMOS.filter((c) => !excluir.has(c.id));
+  if (libres.length > 0) {
+    return libres[randomInt(libres.length)]!;
+  }
+  return CATALOGO_CROMOS[randomInt(CATALOGO_CROMOS.length)]!;
+}
+
+/**
+ * Resuelve un cromo sorteado: inserta si es nuevo; si repetido, calcula devolución.
+ * Mutates `poseidos` al insertar.
+ */
+async function resolverCromoSorteado(
+  ninoId: string,
+  def: CromoDef,
+  poseidos: Set<string>,
+  precioSobre: number,
+): Promise<ItemSobre> {
+  const cromo = aPublico(def);
+  if (poseidos.has(def.id)) {
+    return {
+      cromo,
+      repetido: true,
+      diamantesDevueltos: devolucionPorRepetido(def.rareza),
+    };
+  }
+
+  const supabase = await createClient();
+  const { error: insErr } = await supabase.from("cromos_nino").insert({
+    nino_id: ninoId,
+    cromo_id: def.id,
+    via: "sobre" satisfies ViaCromo,
+    diamantes_gastados: precioSobre,
+  });
+
+  if (insErr) {
+    if (insErr.code === "23505") {
+      return {
+        cromo,
+        repetido: true,
+        diamantesDevueltos: devolucionPorRepetido(def.rareza),
+      };
+    }
+    console.warn("[cromos] insert sobre:", insErr.message);
+    // Tratar como fallo suave: no insertó → devolver mitad como si repetido
+    return {
+      cromo,
+      repetido: true,
+      diamantesDevueltos: devolucionPorRepetido(def.rareza),
+    };
+  }
+
+  poseidos.add(def.id);
+  return { cromo, repetido: false, diamantesDevueltos: 0 };
 }
 
 async function idsPoseidos(ninoId: string): Promise<Set<string>> {
@@ -227,11 +298,14 @@ export async function comprarCromo(
     return { ok: false, error: "No se pudo guardar el cromo." };
   }
 
+  const { evaluarMedallasTrasCromo } = await import("@/lib/juego/medallas");
+  const evalMed = await evaluarMedallasTrasCromo(ninoId);
+
   return {
     ok: true,
     cromo: aPublico(def),
     diamantesGastados: precio,
-    diamantesTotales: gasto.saldo,
+    diamantesTotales: gasto.saldo + evalMed.diamantesExtra,
   };
 }
 
@@ -249,64 +323,86 @@ export async function abrirSobre(ninoId: string): Promise<ResultadoSobre> {
   const gasto = await gastarDiamantes(ninoId, precioSobre);
   if (!gasto.ok) return gasto;
 
-  const rareza = elegirRarezaSobre();
-  const def = elegirCromoDeRareza(rareza);
   const poseidos = await idsPoseidos(ninoId);
-  const repetido = poseidos.has(def.id);
+  const def = elegirCromoDeRareza(elegirRarezaSobre());
+  const item = await resolverCromoSorteado(
+    ninoId,
+    def,
+    poseidos,
+    precioSobre,
+  );
 
-  if (repetido) {
-    const devolucion = devolucionPorRepetido(def.rareza);
-    const saldoTras =
-      (await devolverDiamantes(ninoId, devolucion)) ??
-      gasto.saldo + devolucion;
-
-    return {
-      ok: true,
-      cromo: aPublico(def),
-      repetido: true,
-      diamantesGastados: precioSobre,
-      diamantesDevueltos: devolucion,
-      diamantesTotales: saldoTras,
-    };
+  let saldo = gasto.saldo;
+  if (item.diamantesDevueltos > 0) {
+    saldo =
+      (await devolverDiamantes(ninoId, item.diamantesDevueltos)) ??
+      saldo + item.diamantesDevueltos;
   }
 
-  const supabase = await createClient();
-  const { error: insErr } = await supabase.from("cromos_nino").insert({
-    nino_id: ninoId,
-    cromo_id: def.id,
-    via: "sobre" satisfies ViaCromo,
-    diamantes_gastados: precioSobre,
-  });
-
-  if (insErr) {
-    // Carrera rara: se insertó entre el select y el insert → tratar como repetido
-    if (insErr.code === "23505") {
-      const devolucion = devolucionPorRepetido(def.rareza);
-      const saldoTras =
-        (await devolverDiamantes(ninoId, devolucion)) ??
-        gasto.saldo + devolucion;
-      return {
-        ok: true,
-        cromo: aPublico(def),
-        repetido: true,
-        diamantesGastados: precioSobre,
-        diamantesDevueltos: devolucion,
-        diamantesTotales: saldoTras,
-      };
-    }
-    // Fallo de insert: devolver el coste del sobre
-    await devolverDiamantes(ninoId, precioSobre);
-    console.warn("[cromos] insert sobre:", insErr.message);
-    return { ok: false, error: "No se pudo guardar el cromo del sobre." };
+  if (!item.repetido) {
+    const { evaluarMedallasTrasCromo } = await import("@/lib/juego/medallas");
+    const evalMed = await evaluarMedallasTrasCromo(ninoId);
+    saldo += evalMed.diamantesExtra;
   }
 
   return {
     ok: true,
-    cromo: aPublico(def),
-    repetido: false,
+    cromo: item.cromo,
+    repetido: item.repetido,
     diamantesGastados: precioSobre,
-    diamantesDevueltos: 0,
-    diamantesTotales: gasto.saldo,
+    diamantesDevueltos: item.diamantesDevueltos,
+    diamantesTotales: saldo,
+  };
+}
+
+/**
+ * Sobre grande: 3 cromos distintos (si el catálogo lo permite).
+ */
+export async function abrirSobreGrande(
+  ninoId: string,
+): Promise<ResultadoSobreGrande> {
+  const nino = await getNinoDeMiFamilia(ninoId);
+  if (!nino) {
+    return { ok: false, error: "Perfil no válido." };
+  }
+
+  const precio = CROMOS_ECONOMIA.precioSobreGrande;
+  const nCromos = CROMOS_ECONOMIA.cromosSobreGrande;
+  const gasto = await gastarDiamantes(ninoId, precio);
+  if (!gasto.ok) return gasto;
+
+  const poseidos = await idsPoseidos(ninoId);
+  const elegidos = new Set<string>();
+  const items: ItemSobre[] = [];
+
+  for (let i = 0; i < nCromos; i++) {
+    const def = elegirCromoDeRareza(elegirRarezaSobre(), elegidos);
+    elegidos.add(def.id);
+    items.push(
+      await resolverCromoSorteado(ninoId, def, poseidos, precio),
+    );
+  }
+
+  const devolucionTotal = items.reduce((s, it) => s + it.diamantesDevueltos, 0);
+  let saldo = gasto.saldo;
+  if (devolucionTotal > 0) {
+    saldo =
+      (await devolverDiamantes(ninoId, devolucionTotal)) ??
+      saldo + devolucionTotal;
+  }
+
+  if (items.some((it) => !it.repetido)) {
+    const { evaluarMedallasTrasCromo } = await import("@/lib/juego/medallas");
+    const evalMed = await evaluarMedallasTrasCromo(ninoId);
+    saldo += evalMed.diamantesExtra;
+  }
+
+  return {
+    ok: true,
+    items,
+    diamantesGastados: precio,
+    diamantesDevueltos: devolucionTotal,
+    diamantesTotales: saldo,
   };
 }
 

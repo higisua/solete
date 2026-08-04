@@ -23,16 +23,24 @@ export {
 export {
   evaluarMedallasTrasMision,
   evaluarMedallasTrasPractica,
+  evaluarMedallasTrasCromo,
   otorgarMedallaBienvenida,
   type MedallaDesbloqueada,
 } from "@/lib/juego/medallas";
 export {
   DIAMANTES_MISION_DIARIA,
   DIAMANTES_PRACTICA_DIARIA,
+  DIAMANTES_CATEGORIA_COMPLETA,
+  DIAMANTES_PRACTICA_EXTREMA_LOTE,
   PRACTICA_PREGUNTAS_PARA_DIAMANTE,
+  PRACTICA_EXTREMA_ACIERTOS_POR_LOTE,
+  esNivelPractica,
+  type NivelPractica,
 } from "@/lib/juego/economia";
 export {
   registrarPracticaDelDia,
+  otorgarDiamantesPracticaExtrema,
+  diamantesPracticaExtrema,
   totalPreguntasPractica,
   preguntasPracticaHoy,
 } from "@/lib/juego/practica-diaria";
@@ -56,10 +64,13 @@ export {
 export {
   comprarCromo,
   abrirSobre,
+  abrirSobreGrande,
   getColeccionVista,
   type CromoObtenido,
   type ResultadoCompraCromo,
   type ResultadoSobre,
+  type ResultadoSobreGrande,
+  type ItemSobre,
   type ColeccionVista,
   type TematicaAlbum,
   type CromoAlbumItem,

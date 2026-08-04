@@ -72,9 +72,14 @@ export function CromoCara(props: Props) {
         src={props.imagenSrc}
         alt={props.nombre}
         fill
-        sizes="(max-width: 448px) 25vw, 110px"
+        sizes={
+          size === "lg"
+            ? "(max-width: 448px) 70vw, 280px"
+            : size === "md"
+              ? "(max-width: 448px) 45vw, 180px"
+              : "(max-width: 448px) 22vw, 96px"
+        }
         className="object-cover"
-        unoptimized
       />
     </div>
   );

@@ -17,7 +17,7 @@ export const varianteAparecer = {
 export const varianteLista = {
   oculto: {},
   visible: {
-    transition: { staggerChildren: 0.07, delayChildren: 0.05 },
+    transition: { staggerChildren: 0.04, delayChildren: 0.02 },
   },
 };
 

@@ -15,6 +15,7 @@ import { CromoCara, EtiquetaRareza } from "@/components/cromos/CromoCara";
 import { SaldoDiamantes } from "@/components/cromos/SaldoDiamantes";
 import {
   abrirSobreAction,
+  abrirSobreGrandeAction,
   comprarCromoAction,
 } from "@/app/actions/cromos";
 import {
@@ -26,7 +27,7 @@ import {
 import type {
   ColeccionVista,
   CromoAlbumItem,
-  CromoObtenido,
+  ItemSobre,
 } from "@/lib/juego/cromos";
 import { cn } from "@/lib/cn";
 
@@ -36,11 +37,9 @@ type Props = {
   coleccion: ColeccionVista;
 };
 
-type ResultadoSobreOk = {
-  cromo: CromoObtenido;
-  repetido: boolean;
-  diamantesDevueltos: number;
-  diamantesTotales: number;
+type Revelacion = {
+  items: ItemSobre[];
+  variante: "clasico" | "grande";
 };
 
 export function TiendaCromos({ coleccion: inicial }: Props) {
@@ -52,8 +51,8 @@ export function TiendaCromos({ coleccion: inicial }: Props) {
   const [filtro, setFiltro] = useState<Filtro>("todas");
   const [error, setError] = useState<string | null>(null);
   const [comprandoId, setComprandoId] = useState<string | null>(null);
-  const [abriendo, setAbriendo] = useState(false);
-  const [revelacion, setRevelacion] = useState<ResultadoSobreOk | null>(null);
+  const [abriendo, setAbriendo] = useState<"clasico" | "grande" | null>(null);
+  const [revelacion, setRevelacion] = useState<Revelacion | null>(null);
 
   const faltan = useMemo(() => {
     const todos: CromoAlbumItem[] = tematicas.flatMap((t) => t.cromos);
@@ -66,13 +65,16 @@ export function TiendaCromos({ coleccion: inicial }: Props) {
   }, [faltan, filtro]);
 
   const puedeSobre = diamantes >= CROMOS_ECONOMIA.precioSobre;
+  const puedeGrande = diamantes >= CROMOS_ECONOMIA.precioSobreGrande;
 
-  function marcarPoseido(cromoId: string, nuevosDiamantes: number) {
+  function marcarPoseidos(ids: string[], nuevosDiamantes: number) {
     setDiamantes(nuevosDiamantes);
+    if (ids.length === 0) return;
+    const setIds = new Set(ids);
     setTematicas((prev) =>
       prev.map((t) => {
         const cromos = t.cromos.map((c) =>
-          c.id === cromoId
+          setIds.has(c.id)
             ? { ...c, loTiene: true, obtenidoEn: new Date().toISOString() }
             : c,
         );
@@ -97,32 +99,54 @@ export function TiendaCromos({ coleccion: inicial }: Props) {
         setError(res.error);
         return;
       }
-      marcarPoseido(res.cromo.id, res.diamantesTotales);
+      marcarPoseidos([res.cromo.id], res.diamantesTotales);
       router.refresh();
     });
   }
 
-  function abrirSobre() {
+  function abrirClasico() {
     if (!puedeSobre || pending || abriendo) return;
     setError(null);
-    setAbriendo(true);
+    setAbriendo("clasico");
     startTransition(async () => {
       const res = await abrirSobreAction();
-      setAbriendo(false);
+      setAbriendo(null);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      const items: ItemSobre[] = [
+        {
+          cromo: res.cromo,
+          repetido: res.repetido,
+          diamantesDevueltos: res.diamantesDevueltos,
+        },
+      ];
+      setDiamantes(res.diamantesTotales);
+      if (!res.repetido) {
+        marcarPoseidos([res.cromo.id], res.diamantesTotales);
+      }
+      setRevelacion({ items, variante: "clasico" });
+    });
+  }
+
+  function abrirGrande() {
+    if (!puedeGrande || pending || abriendo) return;
+    setError(null);
+    setAbriendo("grande");
+    startTransition(async () => {
+      const res = await abrirSobreGrandeAction();
+      setAbriendo(null);
       if (!res.ok) {
         setError(res.error);
         return;
       }
       setDiamantes(res.diamantesTotales);
-      if (!res.repetido) {
-        marcarPoseido(res.cromo.id, res.diamantesTotales);
+      const nuevos = res.items.filter((i) => !i.repetido).map((i) => i.cromo.id);
+      if (nuevos.length > 0) {
+        marcarPoseidos(nuevos, res.diamantesTotales);
       }
-      setRevelacion({
-        cromo: res.cromo,
-        repetido: res.repetido,
-        diamantesDevueltos: res.diamantesDevueltos,
-        diamantesTotales: res.diamantesTotales,
-      });
+      setRevelacion({ items: res.items, variante: "grande" });
     });
   }
 
@@ -135,9 +159,8 @@ export function TiendaCromos({ coleccion: inicial }: Props) {
     <Pantalla className="fondo-halo-sol pb-10 pt-5">
       {revelacion ? (
         <AnimacionSobre
-          cromo={revelacion.cromo}
-          repetido={revelacion.repetido}
-          diamantesDevueltos={revelacion.diamantesDevueltos}
+          items={revelacion.items}
+          varianteSobre={revelacion.variante}
           onCerrar={cerrarRevelacion}
         />
       ) : null}
@@ -160,29 +183,60 @@ export function TiendaCromos({ coleccion: inicial }: Props) {
         </header>
       </Aparecer>
 
-      {/* Sobre sorpresa */}
-      <Aparecer delay={0.06} className="mt-5">
+      <Aparecer delay={0.06} className="mt-5 grid gap-3">
+        {/* Sobre clásico */}
         <div className="rounded-[24px] bg-[linear-gradient(145deg,#FFF8ED_0%,#FFE4C8_55%,#F0997B33_100%)] px-4 py-5 shadow-[0_10px_28px_-14px_rgba(216,90,48,0.35)]">
           <div className="flex flex-col items-center text-center">
-            <SobreBalanceo reducir={Boolean(reducir)} />
+            <SobreBalanceo reducir={Boolean(reducir)} variante="clasico" />
             <h2 className="mt-3 font-titulo text-xl font-semibold text-sol">
               Sobre sorpresa
             </h2>
             <p className="mt-1 max-w-[16rem] font-cuerpo text-sm text-black/55">
-              ¡Ábrelo y descubre qué cromo te toca!
+              1 cromo al azar
             </p>
             <div className="mt-4 w-full max-w-xs">
               <Boton
                 type="button"
                 variant="primario"
-                disabled={!puedeSobre || pending || abriendo}
-                onClick={abrirSobre}
+                disabled={!puedeSobre || pending || Boolean(abriendo)}
+                onClick={abrirClasico}
               >
-                {abriendo ? (
+                {abriendo === "clasico" ? (
                   "Abriendo…"
                 ) : (
                   <>
                     Abrir por {CROMOS_ECONOMIA.precioSobre}{" "}
+                    <Gem className="h-5 w-5 stroke-[2]" aria-hidden />
+                  </>
+                )}
+              </Boton>
+            </div>
+          </div>
+        </div>
+
+        {/* Sobre grande */}
+        <div className="rounded-[24px] bg-[linear-gradient(145deg,#F2F8FD_0%,#D6EAF8_55%,#7EB8E855_100%)] px-4 py-5 shadow-[0_10px_28px_-14px_rgba(61,122,181,0.35)]">
+          <div className="flex flex-col items-center text-center">
+            <SobreBalanceo reducir={Boolean(reducir)} variante="grande" />
+            <h2 className="mt-3 font-titulo text-xl font-semibold text-[#2F5F8A]">
+              Sobre grande
+            </h2>
+            <p className="mt-1 max-w-[16rem] font-cuerpo text-sm text-black/55">
+              ¡3 cromos de una vez!
+            </p>
+            <div className="mt-4 w-full max-w-xs">
+              <Boton
+                type="button"
+                variant="secundario"
+                disabled={!puedeGrande || pending || Boolean(abriendo)}
+                onClick={abrirGrande}
+                className="border-[#3D7AB5]/30 text-[#2F5F8A]"
+              >
+                {abriendo === "grande" ? (
+                  "Abriendo…"
+                ) : (
+                  <>
+                    Abrir por {CROMOS_ECONOMIA.precioSobreGrande}{" "}
                     <Gem className="h-5 w-5 stroke-[2]" aria-hidden />
                   </>
                 )}
@@ -198,7 +252,6 @@ export function TiendaCromos({ coleccion: inicial }: Props) {
         </p>
       </Aparecer>
 
-      {/* Filtros */}
       <Aparecer delay={0.12} className="mt-4">
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <FiltroChip
@@ -310,26 +363,45 @@ function FiltroChip({
   );
 }
 
-function SobreBalanceo({ reducir }: { reducir: boolean }) {
+function SobreBalanceo({
+  reducir,
+  variante,
+}: {
+  reducir: boolean;
+  variante: "clasico" | "grande";
+}) {
+  const grande = variante === "grande";
   return (
     <motion.div
-      className="relative h-24 w-28"
+      className={cn("relative", grande ? "h-28 w-32" : "h-24 w-28")}
       animate={
-        reducir
-          ? undefined
-          : { rotate: [-4, 4, -4], y: [0, -5, 0] }
+        reducir ? undefined : { rotate: [-4, 4, -4], y: [0, -5, 0] }
       }
       transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
       aria-hidden
     >
-      <div className="absolute inset-x-1 bottom-0 top-6 rounded-b-xl bg-[linear-gradient(160deg,#F0997B_0%,#D85A30_100%)] shadow-md" />
+      <div
+        className={cn(
+          "absolute inset-x-1 bottom-0 top-6 rounded-b-xl shadow-md",
+          grande
+            ? "bg-[linear-gradient(160deg,#7EB8E8_0%,#3D7AB5_100%)]"
+            : "bg-[linear-gradient(160deg,#F0997B_0%,#D85A30_100%)]",
+        )}
+      />
       <div
         className="absolute inset-x-1 top-1 h-14"
         style={{
           clipPath: "polygon(0 0, 50% 58%, 100% 0)",
-          background: "linear-gradient(180deg, #FAC775 0%, #E8A84A 100%)",
+          background: grande
+            ? "linear-gradient(180deg, #B8D9F5 0%, #6FA3D4 100%)"
+            : "linear-gradient(180deg, #FAC775 0%, #E8A84A 100%)",
         }}
       />
+      {grande ? (
+        <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 font-titulo text-[10px] font-bold text-white/95">
+          ×3
+        </span>
+      ) : null}
     </motion.div>
   );
 }

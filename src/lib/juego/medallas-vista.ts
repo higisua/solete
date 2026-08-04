@@ -2,10 +2,18 @@ import { createClient } from "@/lib/supabase/server";
 import { hoyMadridISO } from "@/lib/fecha-madrid";
 import { finMesISO, inicioMesISO } from "@/lib/juego/calendario";
 import {
+  CATALOGO_CROMOS,
+  TEMATICAS_CROMOS,
+  type TematicaId,
+} from "@/lib/juego/cromos-catalogo";
+import {
   CATALOGO_MEDALLAS,
   type MedallaId,
 } from "@/lib/juego/medallas-catalogo";
-import { MEDALLAS_CON_PROGRESO } from "@/lib/juego/medallas-iconos";
+import {
+  MEDALLA_POR_TEMATICA,
+  MEDALLAS_CON_PROGRESO,
+} from "@/lib/juego/medallas-iconos";
 import {
   preguntasPracticaHoy,
   totalPreguntasPractica,
@@ -37,10 +45,13 @@ type Stats = {
   rachaDias: number;
   aciertosTotales: number;
   conTresEstrellas: number;
+  totalMisiones: number;
   diasMesActual: number;
   diasEnMes: number;
   practicaHoy: number;
   practicaTotal: number;
+  cromos: number;
+  porTema: Record<TematicaId, { actual: number; meta: number }>;
 };
 
 async function cargarStats(ninoId: string): Promise<Stats> {
@@ -50,6 +61,7 @@ async function cargarStats(ninoId: string): Promise<Stats> {
     { data: nino },
     { data: misiones },
     { data: progreso },
+    { data: cromosFilas },
     practicaHoy,
     practicaTotal,
   ] = await Promise.all([
@@ -64,6 +76,7 @@ async function cargarStats(ninoId: string): Promise<Stats> {
       .eq("nino_id", ninoId)
       .eq("completada", true),
     supabase.from("progreso").select("aciertos").eq("nino_id", ninoId),
+    supabase.from("cromos_nino").select("cromo_id").eq("nino_id", ninoId),
     preguntasPracticaHoy(ninoId),
     totalPreguntasPractica(ninoId),
   ]);
@@ -88,14 +101,27 @@ async function cargarStats(ninoId: string): Promise<Stats> {
       .filter((f) => f >= desde && f <= hasta),
   ).size;
 
+  const poseidos = new Set((cromosFilas ?? []).map((r) => String(r.cromo_id)));
+  const porTema = {} as Record<TematicaId, { actual: number; meta: number }>;
+  for (const tema of TEMATICAS_CROMOS) {
+    const delTema = CATALOGO_CROMOS.filter((c) => c.tematicaId === tema.id);
+    porTema[tema.id] = {
+      actual: delTema.filter((c) => poseidos.has(c.id)).length,
+      meta: delTema.length,
+    };
+  }
+
   return {
     rachaDias,
     aciertosTotales,
     conTresEstrellas,
+    totalMisiones: lista.length,
     diasMesActual,
     diasEnMes,
     practicaHoy,
     practicaTotal,
+    cromos: poseidos.size,
+    porTema,
   };
 }
 
@@ -107,36 +133,51 @@ function progresoDe(id: MedallaId, stats: Stats): ProgresoMedalla | null {
       return { actual: Math.min(stats.rachaDias, 3), meta: 3 };
     case "semana":
       return { actual: Math.min(stats.rachaDias, 7), meta: 7 };
+    case "quince_dias":
+      return { actual: Math.min(stats.rachaDias, 15), meta: 15 };
     case "estrella_fija":
-      return {
-        actual: Math.min(stats.conTresEstrellas, 5),
-        meta: 5,
-      };
+      return { actual: Math.min(stats.conTresEstrellas, 5), meta: 5 };
+    case "diez_perfectos":
+      return { actual: Math.min(stats.conTresEstrellas, 10), meta: 10 };
     case "aprendiz":
-      return {
-        actual: Math.min(stats.aciertosTotales, 100),
-        meta: 100,
-      };
+      return { actual: Math.min(stats.aciertosTotales, 100), meta: 100 };
+    case "aciertos_250":
+      return { actual: Math.min(stats.aciertosTotales, 250), meta: 250 };
     case "sabelotodo":
-      return {
-        actual: Math.min(stats.aciertosTotales, 500),
-        meta: 500,
-      };
+      return { actual: Math.min(stats.aciertosTotales, 500), meta: 500 };
+    case "misiones_10":
+      return { actual: Math.min(stats.totalMisiones, 10), meta: 10 };
+    case "misiones_25":
+      return { actual: Math.min(stats.totalMisiones, 25), meta: 25 };
     case "mes_completo":
       return {
         actual: Math.min(stats.diasMesActual, stats.diasEnMes),
         meta: stats.diasEnMes,
       };
     case "practica_10":
-      return {
-        actual: Math.min(stats.practicaHoy, 10),
-        meta: 10,
-      };
+      return { actual: Math.min(stats.practicaHoy, 10), meta: 10 };
+    case "practica_dia_25":
+      return { actual: Math.min(stats.practicaHoy, 25), meta: 25 };
+    case "practica_50":
+      return { actual: Math.min(stats.practicaTotal, 50), meta: 50 };
     case "practica_100":
-      return {
-        actual: Math.min(stats.practicaTotal, 100),
-        meta: 100,
-      };
+      return { actual: Math.min(stats.practicaTotal, 100), meta: 100 };
+    case "primer_cromo":
+      return { actual: Math.min(stats.cromos, 1), meta: 1 };
+    case "coleccion_10":
+      return { actual: Math.min(stats.cromos, 10), meta: 10 };
+    case "album_animales":
+    case "album_ciudades":
+    case "album_comidas":
+    case "album_deportes":
+    case "album_transportes": {
+      const temaId = (
+        Object.entries(MEDALLA_POR_TEMATICA) as [TematicaId, MedallaId][]
+      ).find(([, mid]) => mid === id)?.[0];
+      if (!temaId) return null;
+      const t = stats.porTema[temaId];
+      return { actual: t.actual, meta: t.meta };
+    }
     default:
       return null;
   }

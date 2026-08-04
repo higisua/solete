@@ -1,12 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
 import { getNinoActivoId } from "@/lib/nino-activo";
 import type { Asignatura, Nino } from "@/types/database";
-import { getNinosDeMiFamilia } from "@/lib/familia";
 
-/** Devuelve un niño solo si pertenece a la familia del adulto autenticado. */
+/**
+ * Devuelve un niño si pertenece a la familia del adulto (RLS lo garantiza).
+ * Consulta directa por id — evita listar todos los hermanos en cada llamada.
+ */
 export async function getNinoDeMiFamilia(ninoId: string): Promise<Nino | null> {
-  const ninos = await getNinosDeMiFamilia();
-  return ninos.find((n) => n.id === ninoId) ?? null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("ninos")
+    .select("*")
+    .eq("id", ninoId)
+    .maybeSingle();
+  return (data as Nino | null) ?? null;
 }
 
 /** Niño activo de la cookie, validado contra la familia del adulto. */
@@ -38,17 +45,14 @@ export async function getTotalesProgreso(ninoId: string): Promise<{
 }> {
   const supabase = await createClient();
 
-  const { data: nino } = await supabase
-    .from("ninos")
-    .select("diamantes")
-    .eq("id", ninoId)
-    .maybeSingle();
-
-  const { data: misiones } = await supabase
-    .from("misiones_diarias")
-    .select("estrellas")
-    .eq("nino_id", ninoId)
-    .eq("completada", true);
+  const [{ data: nino }, { data: misiones }] = await Promise.all([
+    supabase.from("ninos").select("diamantes").eq("id", ninoId).maybeSingle(),
+    supabase
+      .from("misiones_diarias")
+      .select("estrellas")
+      .eq("nino_id", ninoId)
+      .eq("completada", true),
+  ]);
 
   if (nino && typeof nino.diamantes === "number") {
     const estrellas = (misiones ?? []).reduce(

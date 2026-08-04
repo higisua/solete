@@ -1,0 +1,569 @@
+-- =============================================================================
+-- Solete — Inventario consolidado del estado de la base de datos (documentación)
+-- =============================================================================
+-- Generado: 2026-07-21
+-- Propósito: retrato único y versionable del esquema público esperado, para
+--            auditar y poder recrear la BD si hiciera falta.
+--
+-- IMPORTANTE — alcance de este documento
+-- -----------------------------------------------------------------------------
+-- Este archivo consolida el estado a partir de los SQL VERSIONADOS en el repo:
+--   fase2_esquema.sql
+--   fase3_permisos.sql
+--   fase4b_racha.sql
+--   fase5b_superadmin_rls.sql
+--   fase6_mision_diaria.sql
+--   fase6_medallas.sql
+--   fase6_cromos.sql
+--   fase6_practica_diaria.sql
+--   fase6_seed_preguntas_1ep.sql   (DATOS, no esquema)
+--   fase6_seed_preguntas_2ep.sql   (DATOS, no esquema)
+--   fase2_seed.sql                 (DATOS de prueba OBSOLETOS; ver §11)
+--
+-- NO se ha introspeccionado la instancia live de Supabase desde el agente
+-- (no hay DATABASE_URL / service role en el entorno del repo; solo anon key).
+-- Por tanto esto es el estado DOCUMENTADO / ESPERADO tras aplicar esos scripts.
+-- Para contrastar con el estado REAL, ejecuta las consultas del §12 en el
+-- SQL Editor y compara.
+--
+-- Este archivo es DOCUMENTACIÓN. No lo ejecutes tal cual como migración
+-- idempotente (mezcla CREATE, comentarios de drift y notes). Para recrear
+-- desde cero, sigue el orden del §0.
+-- =============================================================================
+
+-- =============================================================================
+-- §0. Orden recomendado para recrear una BD vacía
+-- =============================================================================
+-- 1) fase2_esquema.sql
+-- 2) fase3_permisos.sql
+-- 3) fase4b_racha.sql
+-- 4) fase5b_superadmin_rls.sql
+-- 5) fase6_mision_diaria.sql
+-- 6) fase6_medallas.sql
+-- 7) fase6_cromos.sql
+-- 8) fase6_practica_diaria.sql
+-- 9) fase6_seed_preguntas_1ep.sql
+-- 10) fase6_seed_preguntas_2ep.sql
+-- NO ejecutar fase2_seed.sql si ya usas los packs 1º/2º (hace TRUNCATE de
+-- asignaturas/temas/preguntas).
+
+-- =============================================================================
+-- §1. Elementos en SQL versionados que el inventario “por fases” a menudo olvida
+-- =============================================================================
+-- El usuario citó: fase2_esquema, fase2_seed, fase4b_racha, fase6_mision_diaria,
+-- fase6_medallas, fase6_cromos, “ajuste de economía”, seeds 1º/2º.
+--
+-- YA ESTÁN VERSIONADOS pero a menudo no se listan:
+--   • fase3_permisos.sql
+--       → GRANT USAGE/SELECT/INSERT/UPDATE/DELETE a authenticated (y anon USAGE)
+--       → reafirma política familias_insert_propia
+--   • fase5b_superadmin_rls.sql
+--       → reescribe es_superadmin() como SECURITY DEFINER
+--       → políticas familias_select_superadmin, ninos_select_superadmin
+--   • fase6_practica_diaria.sql
+--       → tabla practica_diaria
+--       → RPC sumar_practica_diaria, marcar_diamante_practica_diaria
+--       → RLS + política practica_diaria_select_superadmin
+--
+-- “Ajuste de economía” (misión +2💎, práctica +1💎/día a 10 preguntas):
+--   → NO hay SQL aparte. Vive en código (src/lib/juego/economia.ts) y usa
+--     columnas/tablas ya definidas en fase6_mision_diaria / fase6_practica_diaria.
+--
+-- CONCLUSIÓN (desde el repo): no aparece ningún objeto de esquema usado por la
+-- app que no tenga SQL versionado correspondiente.
+-- PENDIENTE de verificar en LIVE (§12): columnas/tablas/funciones/policies
+-- creadas a mano en el dashboard y nunca volcadas al repo.
+
+-- =============================================================================
+-- §2. Extensiones
+-- =============================================================================
+-- pgcrypto (gen_random_uuid). Habitualmente ya activa en Supabase.
+-- Fuente: fase2_esquema.sql
+-- CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- =============================================================================
+-- §3. TABLAS (12) — columnas, tipos, defaults, restricciones
+-- =============================================================================
+-- Conteos: 12 tablas en public usadas por Solete.
+
+-- -----------------------------------------------------------------------------
+-- 3.1 familias  (fase2_esquema)
+-- -----------------------------------------------------------------------------
+-- CREATE TABLE public.familias (
+--   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   user_id    UUID NOT NULL UNIQUE REFERENCES auth.users (id) ON DELETE CASCADE,
+--   nombre     TEXT NOT NULL,
+--   pin_hash   TEXT,  -- hash bcrypt del PIN zona padres; NULL hasta configurarlo
+--   rol        TEXT NOT NULL DEFAULT 'user' CHECK (rol IN ('user', 'superadmin')),
+--   creado_en  TIMESTAMPTZ NOT NULL DEFAULT now()
+-- );
+-- RLS: ENABLED
+-- GRANT (fase3): SELECT, INSERT, UPDATE, DELETE → authenticated
+
+-- -----------------------------------------------------------------------------
+-- 3.2 ninos  (fase2_esquema + fase4b_racha + fase6_mision_diaria)
+-- -----------------------------------------------------------------------------
+-- CREATE TABLE public.ninos (
+--   id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   familia_id           UUID NOT NULL REFERENCES public.familias (id) ON DELETE CASCADE,
+--   nombre               TEXT NOT NULL,
+--   curso                TEXT NOT NULL CHECK (curso IN ('1', '2')),
+--   avatar               TEXT NOT NULL,
+--   creado_en            TIMESTAMPTZ NOT NULL DEFAULT now(),
+--   -- fase4b_racha.sql:
+--   racha_dias           INTEGER NOT NULL DEFAULT 0,
+--   ultima_mision_fecha  DATE,
+--   -- fase6_mision_diaria.sql:
+--   diamantes            INTEGER NOT NULL DEFAULT 0
+--     CONSTRAINT ninos_diamantes_check CHECK (diamantes >= 0)
+-- );
+-- INDEX: ninos_familia_id_idx (familia_id)
+-- RLS: ENABLED
+-- GRANT (fase3): SELECT, INSERT, UPDATE, DELETE → authenticated
+
+-- -----------------------------------------------------------------------------
+-- 3.3 asignaturas  (fase2_esquema)
+-- -----------------------------------------------------------------------------
+-- CREATE TABLE public.asignaturas (
+--   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   nombre     TEXT NOT NULL,
+--   icono      TEXT NOT NULL,  -- emoji o clave legacy (calculadora, libro…)
+--   curso      TEXT NOT NULL CHECK (curso IN ('1', '2')),
+--   creado_en  TIMESTAMPTZ NOT NULL DEFAULT now()
+-- );
+-- RLS: ENABLED
+-- GRANT (fase3): SELECT + INSERT/UPDATE/DELETE → authenticated (escritura vía RLS superadmin)
+
+-- -----------------------------------------------------------------------------
+-- 3.4 temas  (fase2_esquema)
+-- -----------------------------------------------------------------------------
+-- CREATE TABLE public.temas (
+--   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   asignatura_id  UUID NOT NULL REFERENCES public.asignaturas (id) ON DELETE CASCADE,
+--   nombre         TEXT NOT NULL,
+--   orden          INTEGER NOT NULL DEFAULT 0,
+--   creado_en      TIMESTAMPTZ NOT NULL DEFAULT now()
+-- );
+-- INDEX: temas_asignatura_id_idx (asignatura_id)
+-- RLS: ENABLED
+-- GRANT (fase3): SELECT + INSERT/UPDATE/DELETE → authenticated
+
+-- -----------------------------------------------------------------------------
+-- 3.5 preguntas  (fase2_esquema)
+-- -----------------------------------------------------------------------------
+-- CREATE TABLE public.preguntas (
+--   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   tema_id      UUID NOT NULL REFERENCES public.temas (id) ON DELETE CASCADE,
+--   tipo         TEXT NOT NULL CHECK (tipo IN ('numeric', 'true_false', 'multiple_choice')),
+--   enunciado    TEXT NOT NULL,
+--   opciones     JSONB,              -- solo multiple_choice; NULL en el resto
+--   respuesta    JSONB NOT NULL,     -- bool / number / string JSON según tipo
+--   dificultad   INTEGER NOT NULL CHECK (dificultad BETWEEN 1 AND 3),
+--   creado_en    TIMESTAMPTZ NOT NULL DEFAULT now()
+-- );
+-- INDEX: preguntas_tema_id_idx (tema_id)
+-- RLS: ENABLED
+-- GRANT (fase3): SELECT + INSERT/UPDATE/DELETE → authenticated
+
+-- -----------------------------------------------------------------------------
+-- 3.6 temas_activos  (fase2_esquema)
+-- -----------------------------------------------------------------------------
+-- CREATE TABLE public.temas_activos (
+--   id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   nino_id  UUID NOT NULL REFERENCES public.ninos (id) ON DELETE CASCADE,
+--   tema_id  UUID NOT NULL REFERENCES public.temas (id) ON DELETE CASCADE,
+--   activo   BOOLEAN NOT NULL DEFAULT true,
+--   UNIQUE (nino_id, tema_id)
+-- );
+-- INDEX: temas_activos_nino_id_idx (nino_id)
+-- RLS: ENABLED
+-- GRANT (fase3): SELECT, INSERT, UPDATE, DELETE → authenticated
+
+-- -----------------------------------------------------------------------------
+-- 3.7 progreso  (fase2_esquema)
+-- -----------------------------------------------------------------------------
+-- CREATE TABLE public.progreso (
+--   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   nino_id    UUID NOT NULL REFERENCES public.ninos (id) ON DELETE CASCADE,
+--   tema_id    UUID NOT NULL REFERENCES public.temas (id) ON DELETE CASCADE,
+--   puntos     INTEGER NOT NULL DEFAULT 0,
+--   estrellas  INTEGER NOT NULL DEFAULT 0,  -- legado; estrellas de misión viven en misiones_diarias
+--   aciertos   INTEGER NOT NULL DEFAULT 0,
+--   intentos   INTEGER NOT NULL DEFAULT 0,
+--   UNIQUE (nino_id, tema_id)
+-- );
+-- INDEX: progreso_nino_id_idx (nino_id)
+-- RLS: ENABLED
+-- GRANT (fase3): SELECT, INSERT, UPDATE, DELETE → authenticated
+
+-- -----------------------------------------------------------------------------
+-- 3.8 sesiones  (fase2_esquema)
+-- -----------------------------------------------------------------------------
+-- CREATE TABLE public.sesiones (
+--   id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   nino_id  UUID NOT NULL REFERENCES public.ninos (id) ON DELETE CASCADE,
+--   tema_id  UUID NOT NULL REFERENCES public.temas (id) ON DELETE CASCADE,
+--   modo     TEXT NOT NULL CHECK (modo IN ('mision', 'libre')),
+--   aciertos INTEGER NOT NULL DEFAULT 0,
+--   total    INTEGER NOT NULL DEFAULT 0,
+--   fecha    TIMESTAMPTZ NOT NULL DEFAULT now()
+-- );
+-- INDEX: sesiones_nino_id_idx (nino_id)
+-- INDEX: sesiones_fecha_idx (fecha DESC)
+-- RLS: ENABLED
+-- GRANT (fase3): SELECT, INSERT, UPDATE, DELETE → authenticated
+
+-- -----------------------------------------------------------------------------
+-- 3.9 misiones_diarias  (fase6_mision_diaria)
+-- -----------------------------------------------------------------------------
+-- CREATE TABLE public.misiones_diarias (
+--   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   nino_id             UUID NOT NULL REFERENCES public.ninos (id) ON DELETE CASCADE,
+--   fecha               DATE NOT NULL,              -- día civil Europe/Madrid (app)
+--   completada          BOOLEAN NOT NULL DEFAULT FALSE,
+--   aciertos            INTEGER NOT NULL DEFAULT 0 CHECK (aciertos >= 0),
+--   total               INTEGER NOT NULL DEFAULT 0 CHECK (total >= 0),
+--   estrellas           INTEGER NOT NULL DEFAULT 0 CHECK (estrellas BETWEEN 0 AND 3),
+--   diamante_otorgado   BOOLEAN NOT NULL DEFAULT FALSE,
+--   pregunta_ids        UUID[] NOT NULL DEFAULT '{}',
+--   creada_en           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+--   completada_en       TIMESTAMPTZ,
+--   CONSTRAINT misiones_diarias_nino_fecha_unique UNIQUE (nino_id, fecha),
+--   CONSTRAINT misiones_diarias_aciertos_lte_total CHECK (aciertos <= total)
+-- );
+-- INDEX: misiones_diarias_nino_id_idx (nino_id)
+-- INDEX: misiones_diarias_fecha_idx (fecha)
+-- RLS: ENABLED
+-- GRANT: SELECT, INSERT, UPDATE, DELETE → authenticated
+
+-- -----------------------------------------------------------------------------
+-- 3.10 medallas_nino  (fase6_medallas)
+-- -----------------------------------------------------------------------------
+-- CREATE TABLE public.medallas_nino (
+--   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   nino_id               UUID NOT NULL REFERENCES public.ninos (id) ON DELETE CASCADE,
+--   medalla_id            TEXT NOT NULL,  -- clave catálogo en código
+--   desbloqueada_en       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+--   diamantes_otorgados   INTEGER NOT NULL DEFAULT 0 CHECK (diamantes_otorgados >= 0),
+--   CONSTRAINT medallas_nino_unica UNIQUE (nino_id, medalla_id)
+-- );
+-- INDEX: medallas_nino_nino_id_idx (nino_id)
+-- INDEX: medallas_nino_medalla_id_idx (medalla_id)
+-- RLS: ENABLED
+-- GRANT: SELECT, INSERT, UPDATE, DELETE → authenticated
+-- Catálogo de medallas: NO está en BD → src/lib/juego/medallas-catalogo.ts
+
+-- -----------------------------------------------------------------------------
+-- 3.11 cromos_nino  (fase6_cromos)
+-- -----------------------------------------------------------------------------
+-- CREATE TABLE public.cromos_nino (
+--   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   nino_id             UUID NOT NULL REFERENCES public.ninos (id) ON DELETE CASCADE,
+--   cromo_id            TEXT NOT NULL,  -- clave catálogo en código
+--   obtenido_en         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+--   via                 TEXT NOT NULL DEFAULT 'compra' CHECK (via IN ('compra', 'sobre')),
+--   diamantes_gastados  INTEGER NOT NULL DEFAULT 0 CHECK (diamantes_gastados >= 0),
+--   CONSTRAINT cromos_nino_unica UNIQUE (nino_id, cromo_id)
+-- );
+-- INDEX: cromos_nino_nino_id_idx (nino_id)
+-- INDEX: cromos_nino_cromo_id_idx (cromo_id)
+-- RLS: ENABLED
+-- GRANT: SELECT, INSERT, UPDATE, DELETE → authenticated
+-- Catálogo de cromos: NO está en BD → src/lib/juego/cromos-catalogo.ts
+
+-- -----------------------------------------------------------------------------
+-- 3.12 practica_diaria  (fase6_practica_diaria)  ← fácil de olvidar en inventarios
+-- -----------------------------------------------------------------------------
+-- CREATE TABLE public.practica_diaria (
+--   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   nino_id             UUID NOT NULL REFERENCES public.ninos (id) ON DELETE CASCADE,
+--   fecha               DATE NOT NULL,  -- día civil Europe/Madrid (app)
+--   preguntas           INTEGER NOT NULL DEFAULT 0 CHECK (preguntas >= 0),
+--   diamante_otorgado   BOOLEAN NOT NULL DEFAULT FALSE,
+--   actualizado_en      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+--   CONSTRAINT practica_diaria_nino_fecha_unique UNIQUE (nino_id, fecha)
+-- );
+-- INDEX: practica_diaria_nino_id_idx (nino_id)
+-- INDEX: practica_diaria_fecha_idx (fecha)
+-- RLS: ENABLED
+-- GRANT: SELECT, INSERT, UPDATE, DELETE → authenticated
+
+-- =============================================================================
+-- §4. FUNCIONES / RPC (7)
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- 4.1 es_superadmin()  — fase2_esquema (luego SOBREESCRITA por fase5b)
+-- -----------------------------------------------------------------------------
+-- Estado FINAL esperado (fase5b_superadmin_rls.sql):
+--   RETURNS BOOLEAN
+--   LANGUAGE sql STABLE
+--   SECURITY DEFINER
+--   SET search_path = public
+--   Cuerpo: EXISTS familia del auth.uid() con rol = 'superadmin'
+--   GRANT EXECUTE → authenticated; REVOKE FROM PUBLIC
+--
+-- Motivo SECURITY DEFINER: evitar recursión RLS al listar todas las familias.
+
+-- -----------------------------------------------------------------------------
+-- 4.2 nino_de_mi_familia(p_nino_id UUID)  — fase2_esquema
+-- -----------------------------------------------------------------------------
+--   RETURNS BOOLEAN
+--   LANGUAGE sql STABLE
+--   SECURITY INVOKER (default)
+--   Cuerpo: niño pertenece a familia cuyo user_id = auth.uid()
+
+-- -----------------------------------------------------------------------------
+-- 4.3 proteger_rol_familia()  — fase2_esquema (función de trigger)
+-- -----------------------------------------------------------------------------
+--   RETURNS TRIGGER
+--   LANGUAGE plpgsql
+--   Impide cambiar rol salvo si OLD.rol ya era 'superadmin'
+--   (el dashboard / service role bypasea triggers? → en práctica el cambio de
+--    rol a superadmin se hace desde el Table Editor con privilegios elevados)
+
+-- -----------------------------------------------------------------------------
+-- 4.4 gastar_diamantes(p_nino_id UUID, p_cantidad INTEGER)  — fase6_cromos
+-- -----------------------------------------------------------------------------
+--   RETURNS INTEGER (nuevo saldo)
+--   LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+--   Exige nino_de_mi_familia; UPDATE atómico WHERE diamantes >= cantidad
+--   Excepciones: cantidad_invalida | sin_permiso | saldo_insuficiente
+--   GRANT EXECUTE → authenticated
+
+-- -----------------------------------------------------------------------------
+-- 4.5 devolver_diamantes(p_nino_id UUID, p_cantidad INTEGER)  — fase6_cromos
+-- -----------------------------------------------------------------------------
+--   RETURNS INTEGER (nuevo saldo)
+--   LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+--   Suma diamantes (rollback / repetido de sobre)
+--   Excepciones: cantidad_invalida | sin_permiso | nino_no_encontrado
+--   GRANT EXECUTE → authenticated
+
+-- -----------------------------------------------------------------------------
+-- 4.6 sumar_practica_diaria(p_nino_id, p_fecha, p_preguntas)  — fase6_practica_diaria
+-- -----------------------------------------------------------------------------
+--   RETURNS public.practica_diaria
+--   LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+--   UPSERT por (nino_id, fecha) sumando preguntas
+--   GRANT EXECUTE → authenticated
+
+-- -----------------------------------------------------------------------------
+-- 4.7 marcar_diamante_practica_diaria(p_nino_id, p_fecha)  — fase6_practica_diaria
+-- -----------------------------------------------------------------------------
+--   RETURNS BOOLEAN (true si marcó ahora)
+--   LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+--   UPDATE solo si diamante_otorgado = FALSE AND preguntas >= 10
+--   GRANT EXECUTE → authenticated
+
+-- =============================================================================
+-- §5. TRIGGERS (1)
+-- =============================================================================
+-- trg_proteger_rol_familia
+--   BEFORE UPDATE OF rol ON public.familias
+--   FOR EACH ROW
+--   EXECUTE FUNCTION public.proteger_rol_familia();
+-- Fuente: fase2_esquema.sql
+
+-- =============================================================================
+-- §6. ÍNDICES relevantes (además de PK / UNIQUE implícitos)
+-- =============================================================================
+-- ninos_familia_id_idx              ON ninos (familia_id)
+-- temas_asignatura_id_idx           ON temas (asignatura_id)
+-- preguntas_tema_id_idx             ON preguntas (tema_id)
+-- temas_activos_nino_id_idx         ON temas_activos (nino_id)
+-- progreso_nino_id_idx              ON progreso (nino_id)
+-- sesiones_nino_id_idx              ON sesiones (nino_id)
+-- sesiones_fecha_idx                ON sesiones (fecha DESC)
+-- misiones_diarias_nino_id_idx      ON misiones_diarias (nino_id)
+-- misiones_diarias_fecha_idx        ON misiones_diarias (fecha)
+-- medallas_nino_nino_id_idx         ON medallas_nino (nino_id)
+-- medallas_nino_medalla_id_idx      ON medallas_nino (medalla_id)
+-- cromos_nino_nino_id_idx           ON cromos_nino (nino_id)
+-- cromos_nino_cromo_id_idx          ON cromos_nino (cromo_id)
+-- practica_diaria_nino_id_idx       ON practica_diaria (nino_id)
+-- practica_diaria_fecha_idx         ON practica_diaria (fecha)
+--
+-- UNIQUE explícitos (además de PK):
+--   familias.user_id
+--   temas_activos (nino_id, tema_id)
+--   progreso (nino_id, tema_id)
+--   misiones_diarias (nino_id, fecha)
+--   medallas_nino (nino_id, medalla_id)
+--   cromos_nino (nino_id, cromo_id)
+--   practica_diaria (nino_id, fecha)
+
+-- =============================================================================
+-- §7. POLÍTICAS RLS (48 esperadas)
+-- =============================================================================
+-- Todas las 12 tablas tienen RLS ENABLE.
+-- PostgreSQL combina políticas del mismo comando con OR.
+
+-- ----- familias (5) -----
+-- familias_select_propia          SELECT  USING (user_id = auth.uid())
+-- familias_insert_propia          INSERT  WITH CHECK (user_id = auth.uid() AND rol = 'user')
+-- familias_update_propia          UPDATE  USING/CHECK (user_id = auth.uid())
+-- familias_delete_propia          DELETE  USING (user_id = auth.uid())
+-- familias_select_superadmin      SELECT  USING (es_superadmin())          [fase5b]
+
+-- ----- ninos (5) -----
+-- ninos_select_propia_familia     SELECT  familia_id IN (familias del uid)
+-- ninos_insert_propia_familia     INSERT  idem
+-- ninos_update_propia_familia     UPDATE  idem
+-- ninos_delete_propia_familia     DELETE  idem
+-- ninos_select_superadmin         SELECT  es_superadmin()                 [fase5b]
+
+-- ----- asignaturas / temas / preguntas (2 cada una = 6) -----
+-- *_select_autenticados           SELECT  USING (true)
+-- *_write_superadmin              ALL     USING/CHECK (es_superadmin())
+
+-- ----- temas_activos / progreso / sesiones (4 cada una = 12) -----
+-- *_select_propia_familia         SELECT  nino_de_mi_familia(nino_id)
+-- *_insert_propia_familia         INSERT  idem
+-- *_update_propia_familia         UPDATE  idem
+-- *_delete_propia_familia         DELETE  idem
+
+-- ----- misiones_diarias (5) -----
+-- misiones_diarias_select|insert|update|delete_propia_familia
+-- misiones_diarias_select_superadmin                              [fase6_mision]
+
+-- ----- medallas_nino (5) -----
+-- medallas_nino_select|insert|update|delete_propia_familia
+-- medallas_nino_select_superadmin                                 [fase6_medallas]
+
+-- ----- cromos_nino (5) -----
+-- cromos_nino_select|insert|update|delete_propia_familia
+-- cromos_nino_select_superadmin                                   [fase6_cromos]
+
+-- ----- practica_diaria (5) -----
+-- practica_diaria_select|insert|update|delete_propia_familia
+-- practica_diaria_select_superadmin                               [fase6_practica]
+
+-- =============================================================================
+-- §8. GRANTS (resumen)
+-- =============================================================================
+-- SCHEMA public: USAGE → anon, authenticated                         [fase3]
+-- Tablas de familia/juego (familias, ninos, temas_activos, progreso,
+--   sesiones): SELECT/INSERT/UPDATE/DELETE → authenticated                [fase3]
+-- Contenido (asignaturas, temas, preguntas): SELECT + write grants
+--   → authenticated; el write real lo filtra RLS superadmin           [fase3]
+-- Tablas fase 6 (misiones_diarias, medallas_nino, cromos_nino,
+--   practica_diaria): SELECT/INSERT/UPDATE/DELETE → authenticated
+-- RPC: gastar/devolver/sumar_practica/marcar_diamante → EXECUTE authenticated
+-- es_superadmin: EXECUTE → authenticated (REVOKE PUBLIC)             [fase5b]
+
+-- =============================================================================
+-- §9. DATOS DE CONTENIDO (no esquema)
+-- =============================================================================
+-- Packs actuales (reemplazan el seed de prueba por curso):
+--   fase6_seed_preguntas_1ep.sql → DELETE asignaturas WHERE curso='1' + insert pack
+--     Asignaturas: Matemáticas, Lengua, English, Natural Science
+--     ~737 preguntas
+--   fase6_seed_preguntas_2ep.sql → DELETE asignaturas WHERE curso='2' + insert pack
+--     Asignaturas: Matemáticas, Lengua, English, Natural Science
+--     ~1043 preguntas (sin Ciencias Sociales)
+--
+-- fase2_seed.sql (OBSOLETO para contenido):
+--   TRUNCATE preguntas, temas, asignaturas CASCADE
+--   Inserta 4 asignaturas de prueba + 8 temas + ~30 preguntas
+--   ⚠ Si se reejecuta, BORRA los packs 1º/2º.
+
+-- =============================================================================
+-- §10. Lo que NO vive en la BD (pero la app asume)
+-- =============================================================================
+-- • Catálogo de medallas → src/lib/juego/medallas-catalogo.ts
+-- • Catálogo de cromos / precios / rarezas → src/lib/juego/cromos-catalogo.ts
+-- • Constantes de economía (💎 misión, umbral práctica) → src/lib/juego/economia.ts
+-- • Auth users → schema auth (Supabase Auth), no public
+
+-- =============================================================================
+-- §11. Drift potencial: versionados vs “lista mental” del proyecto
+-- =============================================================================
+-- A) Archivos versionados que a menudo no se mencionan al inventariar:
+--      fase3_permisos.sql
+--      fase5b_superadmin_rls.sql
+--      fase6_practica_diaria.sql
+--    → NO son “huérfanos en BD”; SÍ están en el repo. Incluirlos al recrear.
+--
+-- B) Objetos de esquema que dependen de B y a veces se olvidan al auditar:
+--      tabla practica_diaria
+--      funciones sumar_practica_diaria, marcar_diamante_practica_diaria
+--      políticas *_select_superadmin en misiones/medallas/cromos/practica
+--      columnas ninos.racha_dias, ultima_mision_fecha, diamantes
+--
+-- C) Posible drift LIVE no documentado (solo detectable con §12):
+--      • Columnas/tablas creadas a mano en Table Editor
+--      • Políticas renombradas o duplicadas
+--      • fase2_seed reejecutado (datos distintos a packs 1º/2º)
+--      • Scripts aplicados a medias (p.ej. medallas sin practica_diaria)
+--
+-- D) Desde el código de la app (src/), NO se detectan tablas/RPC usadas que
+--    no tengan SQL versionado. No hay evidencia en el repo de objetos “fantasma”
+--    creados solo en dashboard.
+
+-- =============================================================================
+-- §12. Consultas de verificación LIVE (solo lectura — ejecutar en SQL Editor)
+-- =============================================================================
+-- Compara el resultado con este inventario. Cualquier fila extra = drift.
+
+-- 12.1 Tablas public
+-- SELECT table_name
+-- FROM information_schema.tables
+-- WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+-- ORDER BY 1;
+
+-- 12.2 Columnas de las tablas Solete
+-- SELECT table_name, column_name, data_type, column_default, is_nullable
+-- FROM information_schema.columns
+-- WHERE table_schema = 'public'
+--   AND table_name IN (
+--     'familias','ninos','asignaturas','temas','preguntas',
+--     'temas_activos','progreso','sesiones','misiones_diarias',
+--     'medallas_nino','cromos_nino','practica_diaria'
+--   )
+-- ORDER BY table_name, ordinal_position;
+
+-- 12.3 Funciones public
+-- SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS args,
+--        CASE WHEN p.prosecdef THEN 'SECURITY DEFINER' ELSE 'INVOKER' END AS security
+-- FROM pg_proc p
+-- JOIN pg_namespace n ON n.oid = p.pronamespace
+-- WHERE n.nspname = 'public'
+-- ORDER BY 1, 2;
+
+-- 12.4 Triggers
+-- SELECT event_object_table, trigger_name, action_timing, event_manipulation
+-- FROM information_schema.triggers
+-- WHERE trigger_schema = 'public'
+-- ORDER BY 1, 2;
+
+-- 12.5 Políticas RLS
+-- SELECT tablename, policyname, cmd, roles
+-- FROM pg_policies
+-- WHERE schemaname = 'public'
+-- ORDER BY 1, 2;
+
+-- 12.6 Conteos de contenido (esperado tras packs)
+-- SELECT curso, count(*) FROM public.asignaturas GROUP BY 1 ORDER BY 1;
+-- SELECT a.curso, count(p.*) AS preguntas
+-- FROM public.preguntas p
+-- JOIN public.temas t ON t.id = p.tema_id
+-- JOIN public.asignaturas a ON a.id = t.asignatura_id
+-- GROUP BY 1 ORDER BY 1;
+
+-- =============================================================================
+-- §13. Resumen numérico (estado documentado)
+-- =============================================================================
+-- Tablas:     12
+-- Funciones:   7  (es_superadmin, nino_de_mi_familia, proteger_rol_familia,
+--                  gastar_diamantes, devolver_diamantes,
+--                  sumar_practica_diaria, marcar_diamante_practica_diaria)
+-- Triggers:    1  (trg_proteger_rol_familia)
+-- Políticas:  48  (si se aplicaron todas las fases 2→6)
+-- Índices no-PK listados: 15
+--
+-- ¿Algo en el repo usado por la app SIN SQL versionado?  → No detectado.
+-- ¿Archivos versionados fáciles de olvidar? → fase3_permisos, fase5b_superadmin_rls,
+--   fase6_practica_diaria (y sus 2 RPC).
+-- ¿Drift live sin documentar? → Desconocido hasta correr §12.
+-- =============================================================================

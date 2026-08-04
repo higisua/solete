@@ -5,17 +5,18 @@ import {
   getAsignaturasPorCurso,
   getNinoActivoValidado,
 } from "@/lib/juego";
+import { esNivelPractica, type NivelPractica } from "@/lib/juego/economia";
 import { getPreguntasParaPractica } from "@/lib/juego/preguntas";
 import type { ModoJuego } from "@/types/database";
 
 type Props = {
   params: Promise<{ asignaturaId: string; modo: string }>;
-  searchParams: Promise<{ tema?: string }>;
+  searchParams: Promise<{ tema?: string; nivel?: string }>;
 };
 
 export default async function PartidaPage({ params, searchParams }: Props) {
   const { asignaturaId, modo: modoRaw } = await params;
-  const { tema: temaId } = await searchParams;
+  const { tema: temaId, nivel: nivelRaw } = await searchParams;
 
   if (modoRaw === "mision") {
     redirect("/jugar/mision");
@@ -25,6 +26,7 @@ export default async function PartidaPage({ params, searchParams }: Props) {
     notFound();
   }
   const modo = "libre" as ModoJuego;
+  const nivel: NivelPractica = esNivelPractica(nivelRaw) ? nivelRaw : "normal";
 
   const nino = await getNinoActivoValidado();
   if (!nino) {
@@ -41,6 +43,7 @@ export default async function PartidaPage({ params, searchParams }: Props) {
     nino.id,
     asignaturaId,
     temaId ?? null,
+    nivel,
   );
 
   if (preguntas.length === 0) {
@@ -53,22 +56,30 @@ export default async function PartidaPage({ params, searchParams }: Props) {
           Aún no hay preguntas
         </h1>
         <p className="mt-3 text-lg text-black/65">
-          En {asignatura.nombre} no hay preguntas activas para {nino.nombre}.
-          Prueba otra asignatura o pide a un adulto que active temas.
+          En {asignatura.nombre} no hay preguntas
+          {nivel === "extremo" ? " difíciles" : ""} activas para {nino.nombre}.
+          Prueba otra asignatura o el modo normal.
         </p>
         <Link
-          href="/mundo"
+          href={`/practica?nivel=${nivel}`}
           className="mt-8 inline-flex min-h-12 items-center justify-center rounded-2xl bg-mar px-5 font-titulo text-lg font-semibold text-white"
         >
-          Volver al mundo
+          Volver a práctica
         </Link>
       </main>
     );
   }
 
-  const etiqueta = temaId
+  const etiquetaBase = temaId
     ? `${asignatura.nombre} (tema)`
     : asignatura.nombre;
+  const etiqueta =
+    nivel === "extremo" ? `${etiquetaBase} · Extremo` : etiquetaBase;
+
+  const qs = new URLSearchParams();
+  if (temaId) qs.set("tema", temaId);
+  qs.set("nivel", nivel);
+  const hrefOtraVez = `/jugar/${asignatura.id}/libre?${qs.toString()}`;
 
   return (
     <MotorPreguntas
@@ -79,11 +90,9 @@ export default async function PartidaPage({ params, searchParams }: Props) {
       modo={modo}
       preguntasIniciales={preguntas}
       misionCorta={false}
-      hrefOtraVez={
-        temaId
-          ? `/jugar/${asignatura.id}/libre?tema=${temaId}`
-          : `/jugar/${asignatura.id}/libre`
-      }
+      nivelPractica={nivel}
+      hrefOtraVez={hrefOtraVez}
+      hrefCambiar={`/practica?nivel=${nivel}`}
     />
   );
 }

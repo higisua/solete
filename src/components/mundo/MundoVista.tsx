@@ -9,6 +9,7 @@ import {
   Check,
   Gem,
   LayoutGrid,
+  LogOut,
   Settings,
   Star,
   Users,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
+import { cerrarSesion } from "@/app/actions/auth";
 import { Aparecer, AparecerItem, ListaAparecer, Pantalla } from "@/components/ui";
 import { MISION_OBJETIVO } from "@/lib/juego/reglas";
 import { publicAssetClient } from "@/lib/public-asset-client";
@@ -134,6 +136,15 @@ export function MundoVista({
             >
               <Settings className="h-5 w-5 stroke-[1.75]" />
             </Link>
+            <form action={cerrarSesion}>
+              <button
+                type="submit"
+                aria-label="Cerrar sesión"
+                className={btnCabecera}
+              >
+                <LogOut className="h-5 w-5 stroke-[1.75]" />
+              </button>
+            </form>
           </div>
         </header>
       </Aparecer>

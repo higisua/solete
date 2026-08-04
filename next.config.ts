@@ -2,8 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    // Evita que el optimizador de Next cachee assets locales entre cambios.
-    minimumCacheTTL: 0,
+    // Cache razonable para avatares/cromos/logos locales.
+    minimumCacheTTL: 60 * 60 * 24 * 7,
   },
   async headers() {
     return [
@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Cache-Control",
-            value: "no-store, must-revalidate",
+            value: "public, max-age=604800, stale-while-revalidate=86400",
           },
         ],
       },

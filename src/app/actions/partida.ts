@@ -3,13 +3,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { ayerMadridISO, hoyMadridISO } from "@/lib/fecha-madrid";
 import { getNinoDeMiFamilia } from "@/lib/juego";
-import { DIAMANTES_MISION_DIARIA } from "@/lib/juego/economia";
+import { DIAMANTES_MISION_DIARIA, type NivelPractica } from "@/lib/juego/economia";
 import {
   evaluarMedallasTrasMision,
   evaluarMedallasTrasPractica,
 } from "@/lib/juego/medallas";
 import type { MedallaDesbloqueada } from "@/lib/juego/medallas";
 import {
+  otorgarDiamantesPracticaExtrema,
   registrarPracticaDelDia,
   totalPreguntasPractica,
 } from "@/lib/juego/practica-diaria";
@@ -47,17 +48,21 @@ type PayloadFinalizar = {
   porTema: DetalleTemaPartida[];
   /** Id de misiones_diarias si aplica (misión). */
   misionDiariaId?: string | null;
+  /** Solo práctica: normal (tope diario) u extremo (lotes de aciertos). */
+  nivelPractica?: NivelPractica;
 };
 
 /**
  * Guarda el resultado de una partida.
  *
  * Misión diaria:
- * - Sesión + progreso; estrellas; +2💎 máx/día Madrid; racha; medallas de misión.
+ * - Sesión + progreso; estrellas; +4💎 máx/día Madrid; racha; medallas de misión.
  *
- * Práctica (modo libre):
- * - Sesión + progreso; conteo practica_diaria; +1💎 al llegar a 10 preguntas/día
- *   (máx. 1/día); medallas de práctica.
+ * Práctica normal:
+ * - +2💎 al llegar a 10 preguntas/día (máx. 1/día); medallas de práctica.
+ *
+ * Práctica extrema:
+ * - +3💎 cada 10 aciertos de la sesión (sin tope diario).
  */
 export async function finalizarPartida(
   payload: PayloadFinalizar,
@@ -291,35 +296,48 @@ export async function finalizarPartida(
     }
   }
 
-  // 4) Práctica: conteo diario + diamante topado + medallas de práctica
+  // 4) Práctica: normal (tope diario) o extrema (lotes de aciertos)
   if (esPractica && payload.total > 0) {
-    const reg = await registrarPracticaDelDia(
-      payload.ninoId,
-      payload.total,
-      nino.diamantes ?? 0,
-    );
-    diamantesGanados = reg.diamanteGanado;
-    diamantesTotales = reg.diamantesTotales;
+    const nivel: NivelPractica =
+      payload.nivelPractica === "extremo" ? "extremo" : "normal";
 
-    try {
-      const preguntasTotales = await totalPreguntasPractica(payload.ninoId);
-      const evalMedallas = await evaluarMedallasTrasPractica({
-        ninoId: payload.ninoId,
-        preguntasHoy: reg.preguntasHoy,
-        preguntasTotales,
-      });
-      medallasNuevas = evalMedallas.medallas;
-      if (evalMedallas.diamantesExtra > 0) {
-        diamantesGanados += evalMedallas.diamantesExtra;
-        const { data: ninoAct } = await supabase
-          .from("ninos")
-          .select("diamantes")
-          .eq("id", payload.ninoId)
-          .maybeSingle();
-        diamantesTotales = ninoAct?.diamantes ?? diamantesTotales;
+    if (nivel === "extremo") {
+      const reg = await otorgarDiamantesPracticaExtrema(
+        payload.ninoId,
+        payload.aciertos,
+        nino.diamantes ?? 0,
+      );
+      diamantesGanados = reg.diamanteGanado;
+      diamantesTotales = reg.diamantesTotales;
+    } else {
+      const reg = await registrarPracticaDelDia(
+        payload.ninoId,
+        payload.total,
+        nino.diamantes ?? 0,
+      );
+      diamantesGanados = reg.diamanteGanado;
+      diamantesTotales = reg.diamantesTotales;
+
+      try {
+        const preguntasTotales = await totalPreguntasPractica(payload.ninoId);
+        const evalMedallas = await evaluarMedallasTrasPractica({
+          ninoId: payload.ninoId,
+          preguntasHoy: reg.preguntasHoy,
+          preguntasTotales,
+        });
+        medallasNuevas = evalMedallas.medallas;
+        if (evalMedallas.diamantesExtra > 0) {
+          diamantesGanados += evalMedallas.diamantesExtra;
+          const { data: ninoAct } = await supabase
+            .from("ninos")
+            .select("diamantes")
+            .eq("id", payload.ninoId)
+            .maybeSingle();
+          diamantesTotales = ninoAct?.diamantes ?? diamantesTotales;
+        }
+      } catch (err) {
+        console.warn("[finalizarPartida] medallas práctica:", err);
       }
-    } catch (err) {
-      console.warn("[finalizarPartida] medallas práctica:", err);
     }
   }
 

@@ -20,7 +20,11 @@ export const CROMOS_ECONOMIA = {
     raro: 5,
     especial: 10,
   },
-  precioSobre: 4,
+  /** Sobre clásico: 1 cromo. */
+  precioSobre: 3,
+  /** Sobre grande: 3 cromos. */
+  precioSobreGrande: 10,
+  cromosSobreGrande: 3,
   /** Probabilidades acumuladas del sobre (deben sumar 1). */
   probsSobre: {
     comun: 0.65,

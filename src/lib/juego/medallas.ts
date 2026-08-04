@@ -7,6 +7,12 @@ import {
   type MedallaId,
 } from "@/lib/juego/medallas-catalogo";
 import { PRACTICA_PREGUNTAS_PARA_DIAMANTE } from "@/lib/juego/economia";
+import {
+  CATALOGO_CROMOS,
+  TEMATICAS_CROMOS,
+  type TematicaId,
+} from "@/lib/juego/cromos-catalogo";
+import { MEDALLA_POR_TEMATICA } from "@/lib/juego/medallas-iconos";
 
 export type MedallaDesbloqueada = {
   id: MedallaId;
@@ -16,25 +22,33 @@ export type MedallaDesbloqueada = {
 
 type ContextoMision = {
   ninoId: string;
-  /** Aciertos / total / estrellas de la misión que acaba de guardarse. */
   aciertos: number;
   total: number;
   estrellas: number;
-  /** Racha ya actualizada (Europe/Madrid). */
   rachaDias: number;
 };
 
 type ContextoPractica = {
   ninoId: string;
-  /** Preguntas de práctica acumuladas hoy (Madrid), tras esta sesión. */
   preguntasHoy: number;
-  /** Total histórico de preguntas en sesiones libres. */
   preguntasTotales: number;
 };
 
 const MEDALLAS_SOLO_PRACTICA: ReadonlySet<MedallaId> = new Set([
   "practica_10",
+  "practica_50",
   "practica_100",
+  "practica_dia_25",
+]);
+
+const MEDALLAS_SOLO_CROMOS: ReadonlySet<MedallaId> = new Set([
+  "primer_cromo",
+  "coleccion_10",
+  "album_animales",
+  "album_ciudades",
+  "album_comidas",
+  "album_deportes",
+  "album_transportes",
 ]);
 
 /**
@@ -55,7 +69,6 @@ async function intentarOtorgar(
   });
 
   if (insErr) {
-    // 23505 = unique_violation → ya la tenía
     if (insErr.code === "23505") return null;
     console.warn(`[medallas] insert ${medallaId}:`, insErr.message);
     return null;
@@ -75,7 +88,6 @@ async function intentarOtorgar(
 
   if (diamErr) {
     console.warn(`[medallas] diamantes ${medallaId}:`, diamErr.message);
-    // La medalla quedó marcada; no reintentamos diamantes aquí.
   }
 
   return { id: def.id, nombre: def.nombre, diamantes: def.diamantes };
@@ -114,7 +126,6 @@ async function statsMisiones(ninoId: string): Promise<{
   const totalCompletadas = data.length;
   const conTresEstrellas = data.filter((m) => (m.estrellas ?? 0) >= 3).length;
 
-  // ¿El mes civil de hoy (Madrid) tiene misión todos los días?
   const hoy = hoyMadridISO();
   const [y, m] = hoy.split("-").map(Number);
   const mes = { year: y, month: m };
@@ -141,6 +152,27 @@ async function totalAciertosProgreso(ninoId: string): Promise<number> {
 
   if (error || !data) return 0;
   return data.reduce((s, r) => s + (r.aciertos ?? 0), 0);
+}
+
+async function idsCromosPoseidos(ninoId: string): Promise<Set<string>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("cromos_nino")
+    .select("cromo_id")
+    .eq("nino_id", ninoId);
+  if (error || !data) return new Set();
+  return new Set(data.map((r) => String(r.cromo_id)));
+}
+
+function tematicasCompletas(poseidos: Set<string>): TematicaId[] {
+  const completas: TematicaId[] = [];
+  for (const tema of TEMATICAS_CROMOS) {
+    const delTema = CATALOGO_CROMOS.filter((c) => c.tematicaId === tema.id);
+    if (delTema.length > 0 && delTema.every((c) => poseidos.has(c.id))) {
+      completas.push(tema.id);
+    }
+  }
+  return completas;
 }
 
 async function otorgarCandidatas(
@@ -171,7 +203,6 @@ async function otorgarCandidatas(
 
 /**
  * Evalúa medallas tras una misión diaria recién guardada y otorga las nuevas.
- * No incluye «bienvenida» ni medallas solo de práctica.
  */
 export async function evaluarMedallasTrasMision(
   ctx: ContextoMision,
@@ -185,16 +216,25 @@ export async function evaluarMedallasTrasMision(
   if (stats.totalCompletadas >= 1) candidatas.push("primer_dia");
   if (ctx.rachaDias >= 3) candidatas.push("tres_dias");
   if (ctx.rachaDias >= 7) candidatas.push("semana");
+  if (ctx.rachaDias >= 15) candidatas.push("quince_dias");
   if (stats.mesCompleto) candidatas.push("mes_completo");
   if (ctx.estrellas >= 3 && stats.conTresEstrellas >= 1) {
     candidatas.push("primer_perfecto");
   }
   if (stats.conTresEstrellas >= 5) candidatas.push("estrella_fija");
+  if (stats.conTresEstrellas >= 10) candidatas.push("diez_perfectos");
   if (ctx.total > 0 && ctx.aciertos === ctx.total) candidatas.push("sin_fallar");
   if (aciertosTotales >= 100) candidatas.push("aprendiz");
+  if (aciertosTotales >= 250) candidatas.push("aciertos_250");
   if (aciertosTotales >= 500) candidatas.push("sabelotodo");
+  if (stats.totalCompletadas >= 10) candidatas.push("misiones_10");
+  if (stats.totalCompletadas >= 25) candidatas.push("misiones_25");
 
-  return otorgarCandidatas(ctx.ninoId, candidatas, ya, MEDALLAS_SOLO_PRACTICA);
+  const omitir = new Set<MedallaId>([
+    ...MEDALLAS_SOLO_PRACTICA,
+    ...MEDALLAS_SOLO_CROMOS,
+  ]);
+  return otorgarCandidatas(ctx.ninoId, candidatas, ya, omitir);
 }
 
 /**
@@ -209,9 +249,9 @@ export async function evaluarMedallasTrasPractica(
   if (ctx.preguntasHoy >= PRACTICA_PREGUNTAS_PARA_DIAMANTE) {
     candidatas.push("practica_10");
   }
-  if (ctx.preguntasTotales >= 100) {
-    candidatas.push("practica_100");
-  }
+  if (ctx.preguntasHoy >= 25) candidatas.push("practica_dia_25");
+  if (ctx.preguntasTotales >= 50) candidatas.push("practica_50");
+  if (ctx.preguntasTotales >= 100) candidatas.push("practica_100");
 
   const medallas: MedallaDesbloqueada[] = [];
   let diamantesExtra = 0;
@@ -226,6 +266,36 @@ export async function evaluarMedallasTrasPractica(
     }
   }
 
+  return { medallas, diamantesExtra };
+}
+
+/** Medallas de colección tras comprar/abrir cromos (incluye +3💎 por categoría completa). */
+export async function evaluarMedallasTrasCromo(
+  ninoId: string,
+): Promise<{ medallas: MedallaDesbloqueada[]; diamantesExtra: number }> {
+  const ya = await idsYaConseguidas(ninoId);
+  const poseidos = await idsCromosPoseidos(ninoId);
+  const n = poseidos.size;
+  const candidatas: MedallaId[] = [];
+
+  if (n >= 1) candidatas.push("primer_cromo");
+  if (n >= 10) candidatas.push("coleccion_10");
+
+  for (const temaId of tematicasCompletas(poseidos)) {
+    candidatas.push(MEDALLA_POR_TEMATICA[temaId]);
+  }
+
+  const medallas: MedallaDesbloqueada[] = [];
+  let diamantesExtra = 0;
+  for (const id of candidatas) {
+    if (ya.has(id)) continue;
+    const otorgada = await intentarOtorgar(ninoId, id);
+    if (otorgada) {
+      medallas.push(otorgada);
+      diamantesExtra += otorgada.diamantes;
+      ya.add(id);
+    }
+  }
   return { medallas, diamantesExtra };
 }
 

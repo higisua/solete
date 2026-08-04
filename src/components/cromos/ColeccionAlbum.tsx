@@ -216,7 +216,7 @@ function ModalCromo({
               <X className="h-5 w-5 stroke-[2]" />
             </button>
 
-            <div className="mx-auto w-[85%]">
+            <div className="mx-auto w-full max-w-[16rem]">
               <CromoCara
                 loTiene
                 nombre={cromo.nombre}
@@ -226,7 +226,7 @@ function ModalCromo({
               />
             </div>
 
-            <div className="mt-4 flex flex-col items-center gap-2 text-center">
+            <div className="mt-5 flex flex-col items-center gap-2 text-center">
               <EtiquetaRareza rareza={cromo.rareza} />
               <h2 className="font-titulo text-2xl font-semibold text-sol">
                 {cromo.nombre}
