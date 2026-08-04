@@ -57,8 +57,15 @@ export default async function PartidaPage({ params, searchParams }: Props) {
         </h1>
         <p className="mt-3 text-lg text-black/65">
           En {asignatura.nombre} no hay preguntas
-          {nivel === "extremo" ? " difíciles" : ""} activas para {nino.nombre}.
-          Prueba otra asignatura o el modo normal.
+          {nivel === "extremo"
+            ? nino.curso === "1"
+              ? " de 2º"
+              : " de 3º"
+            : ""}{" "}
+          activas para {nino.nombre}.
+          {nivel === "extremo"
+            ? " Prueba otra asignatura, el modo normal, o pide a un adulto que cargue el contenido del curso siguiente."
+            : " Prueba otra asignatura o el modo normal."}
         </p>
         <Link
           href={`/practica?nivel=${nivel}`}

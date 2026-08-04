@@ -10,7 +10,7 @@ export const varianteAparecer = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] as const },
+    transition: { duration: 0.24, ease: [0.22, 1, 0.36, 1] as const },
   },
 };
 

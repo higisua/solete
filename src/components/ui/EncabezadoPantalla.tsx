@@ -39,7 +39,7 @@ export function EncabezadoPantalla({
 
         <h1
           className={cn(
-            "font-titulo text-3xl font-semibold leading-tight text-sol sm:text-4xl",
+            "font-titulo text-3xl font-semibold leading-tight text-primary sm:text-4xl",
             accion && centro ? "px-10" : undefined,
           )}
         >
@@ -47,7 +47,7 @@ export function EncabezadoPantalla({
         </h1>
 
         {subtitulo ? (
-          <p className="mt-2 max-w-[22rem] text-lg leading-snug text-black/55">
+          <p className="mt-2 max-w-[22rem] font-cuerpo text-lg leading-snug text-readable">
             {subtitulo}
           </p>
         ) : null}

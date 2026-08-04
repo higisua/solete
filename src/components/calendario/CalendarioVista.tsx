@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Aparecer, Pantalla } from "@/components/ui";
+import { Aparecer, BotonIcono, CabeceraNino, Pantalla, Tarjeta } from "@/components/ui";
+import { Solete } from "@/components/solete";
 import {
   celdasMes,
   compararMes,
@@ -16,8 +16,8 @@ import {
   type DiaMisionCalendario,
   type MesCivil,
 } from "@/lib/juego/calendario";
-import { publicAssetClient } from "@/lib/public-asset-client";
 import { cn } from "@/lib/cn";
+
 
 const DIAS_SEMANA = ["L", "M", "X", "J", "V", "S", "D"] as const;
 
@@ -43,38 +43,21 @@ export function CalendarioVista({ mes, mesMaximo, hoyISO, misiones }: Props) {
   }
 
   return (
-    <Pantalla className="fondo-halo-sol pb-10 pt-5">
-      {/* Cabecera */}
+    <Pantalla className="fondo-halo-sol pb-10 pt-5" sinAtmosfera>
       <Aparecer>
-        <header className="relative flex items-center justify-center">
-          <Link
-            href="/mundo"
-            aria-label="Volver"
-            className="absolute left-0 flex h-11 w-11 items-center justify-center rounded-full bg-black/[0.06] text-black/45 transition hover:bg-black/10"
-          >
-            <ChevronLeft className="h-6 w-6 stroke-[1.75]" />
-          </Link>
-          <h1 className="font-titulo text-2xl font-semibold text-sol">
-            Mi calendario
-          </h1>
-        </header>
+        <CabeceraNino titulo="Mi calendario" />
       </Aparecer>
 
-      {/* Resumen */}
       <Aparecer delay={0.06} className="mt-5">
-        <div className="flex items-center gap-4 rounded-[24px] bg-white px-4 py-4 shadow-[0_10px_28px_-14px_rgba(216,90,48,0.3)]">
-          <Image
-            src={publicAssetClient("assets/logos/solete_solo_logo.png")}
-            alt=""
-            width={88}
-            height={88}
-            unoptimized
+        <Tarjeta className="flex items-center gap-4">
+          <Solete
+            mood={diasJugados > 0 ? "happy" : "wave"}
+            size="md"
             priority
-            className="h-20 w-20 shrink-0 object-contain"
-            aria-hidden
+            alt=""
           />
           <div className="min-w-0 text-left">
-            <p className="font-titulo text-xl font-semibold leading-snug text-sol">
+            <p className="font-titulo text-xl font-semibold leading-snug text-primary">
               {diasJugados === 0
                 ? esMesActual
                   ? "¡Empieza tu racha este mes!"
@@ -83,46 +66,43 @@ export function CalendarioVista({ mes, mesMaximo, hoyISO, misiones }: Props) {
                   ? "¡1 día este mes!"
                   : `¡${diasJugados} días este mes!`}
             </p>
-            <p className="mt-1 font-cuerpo text-sm leading-snug text-black/45">
+            <p className="mt-1 font-cuerpo text-sm leading-snug text-readable">
               {diasJugados > 0
                 ? "Sigue así, lo estás haciendo genial"
                 : "Cada misión cuenta. ¡Tú puedes!"}
             </p>
           </div>
-        </div>
+        </Tarjeta>
       </Aparecer>
 
-      {/* Calendario mensual */}
       <Aparecer delay={0.12} className="mt-4">
-        <div className="rounded-[24px] bg-white px-3.5 py-4 shadow-[0_10px_28px_-14px_rgba(216,90,48,0.28)] sm:px-4">
+        <Tarjeta padding="md" className="px-3.5 sm:px-4">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <button
-              type="button"
+            <BotonIcono
               aria-label="Mes anterior"
               onClick={() => irA(mesAnterior(mes))}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-sol/70 transition hover:bg-sol/10"
+              className="bg-sol/8 text-primary hover:bg-sol/15"
             >
-              <ChevronLeft className="h-5 w-5 stroke-[1.75]" />
-            </button>
-            <h2 className="font-titulo text-xl font-semibold text-sol">
+              <ChevronLeft className="h-5 w-5 stroke-[1.75]" aria-hidden />
+            </BotonIcono>
+            <h2 className="font-titulo text-xl font-semibold text-primary">
               {nombreMesEs(mes)}
             </h2>
-            <button
-              type="button"
+            <BotonIcono
               aria-label="Mes siguiente"
               disabled={!puedeSiguiente}
               onClick={() => irA(mesSiguiente(mes))}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-sol/70 transition hover:bg-sol/10 disabled:opacity-30"
+              className="bg-sol/8 text-primary hover:bg-sol/15 disabled:opacity-30"
             >
-              <ChevronRight className="h-5 w-5 stroke-[1.75]" />
-            </button>
+              <ChevronRight className="h-5 w-5 stroke-[1.75]" aria-hidden />
+            </BotonIcono>
           </div>
 
           <div className="mb-2 grid grid-cols-7 gap-1">
             {DIAS_SEMANA.map((d) => (
               <div
                 key={d}
-                className="py-1 text-center font-cuerpo text-xs font-medium text-black/35"
+                className="py-1 text-center font-cuerpo text-xs font-medium text-readable"
               >
                 {d}
               </div>
@@ -148,8 +128,8 @@ export function CalendarioVista({ mes, mesMaximo, hoyISO, misiones }: Props) {
                       "font-titulo text-sm font-semibold leading-none",
                       jugado && "text-[#8B5A2B]",
                       esHoy && !jugado && "text-mar",
-                      esPasadoSinJugar && "text-black/35",
-                      esFuturo && "text-black/25",
+                      esPasadoSinJugar && "text-readable",
+                      esFuturo && "text-readable/60",
                     )}
                   >
                     {celda.dia}
@@ -174,13 +154,13 @@ export function CalendarioVista({ mes, mesMaximo, hoyISO, misiones }: Props) {
               );
 
               const clasesCasilla = cn(
-                "flex aspect-square flex-col items-center justify-center rounded-[12px] transition",
+                "flex min-h-11 aspect-square flex-col items-center justify-center rounded-[12px] transition",
                 jugado && "bg-[#FBE3C4]",
-                esPasadoSinJugar && "bg-[#F3EADD]",
-                esFuturo && "bg-[#F3EADD]/60 opacity-55",
+                esPasadoSinJugar && "bg-[#F7F1E8]",
+                esFuturo && "bg-[#F7F1E8]/70 opacity-60",
                 esHoy && "ring-2 ring-mar ring-offset-1 ring-offset-white",
                 esHoy && jugado && "bg-[#FBE3C4]",
-                esHoy && !jugado && "bg-white",
+                esHoy && !jugado && "bg-surface",
               );
 
               if (esHoy && !jugado) {
@@ -227,7 +207,7 @@ export function CalendarioVista({ mes, mesMaximo, hoyISO, misiones }: Props) {
               );
             })}
           </div>
-        </div>
+        </Tarjeta>
       </Aparecer>
 
       {/* Leyenda */}
@@ -235,7 +215,7 @@ export function CalendarioVista({ mes, mesMaximo, hoyISO, misiones }: Props) {
         <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
           <Leyenda color="#FBE3C4" borde="transparent" label="Jugado" />
           <Leyenda color="#FFFFFF" borde="#1D9E75" label="Hoy" />
-          <Leyenda color="#F3EADD" borde="transparent" label="Sin jugar" />
+          <Leyenda color="#F7F1E8" borde="transparent" label="Sin jugar" />
         </ul>
       </Aparecer>
     </Pantalla>
@@ -252,7 +232,7 @@ function Leyenda({
   label: string;
 }) {
   return (
-    <li className="inline-flex items-center gap-1.5 font-cuerpo text-sm text-black/50">
+    <li className="inline-flex items-center gap-1.5 font-cuerpo text-sm text-readable">
       <span
         className="h-3 w-3 rounded-full"
         style={{

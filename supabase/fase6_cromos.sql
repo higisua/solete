@@ -53,8 +53,8 @@ CREATE OR REPLACE FUNCTION public.gastar_diamantes(
 )
 RETURNS INTEGER
 LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
+SECURITY INVOKER
+SET search_path = ''
 AS $$
 DECLARE
   v_nuevo INTEGER;
@@ -87,8 +87,8 @@ CREATE OR REPLACE FUNCTION public.devolver_diamantes(
 )
 RETURNS INTEGER
 LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
+SECURITY INVOKER
+SET search_path = ''
 AS $$
 DECLARE
   v_nuevo INTEGER;
@@ -115,7 +115,9 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.gastar_diamantes(UUID, INTEGER) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.gastar_diamantes(UUID, INTEGER) FROM anon;
 REVOKE ALL ON FUNCTION public.devolver_diamantes(UUID, INTEGER) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.devolver_diamantes(UUID, INTEGER) FROM anon;
 GRANT EXECUTE ON FUNCTION public.gastar_diamantes(UUID, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.devolver_diamantes(UUID, INTEGER) TO authenticated;
 
@@ -163,13 +165,13 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE p.proname = 'es_superadmin' AND n.nspname = 'public'
+    WHERE p.proname = 'es_superadmin' AND n.nspname = 'private'
   ) THEN
     EXECUTE $pol$
       CREATE POLICY "cromos_nino_select_superadmin"
         ON public.cromos_nino FOR SELECT
         TO authenticated
-        USING (public.es_superadmin())
+        USING (private.es_superadmin())
     $pol$;
   END IF;
 EXCEPTION

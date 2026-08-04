@@ -1,29 +1,30 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
+import { Boton } from "@/components/ui/Boton";
+import { Campo } from "@/components/ui/Campo";
+import { EstadoError } from "@/components/ui/EstadoError";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "sol" | "mar" | "suave";
   children: ReactNode;
 };
 
+/** @deprecated Preferir `Boton` de `@/components/ui`. Puente de compatibilidad. */
 export function Button({
   variant = "sol",
   className = "",
   children,
   ...props
 }: ButtonProps) {
-  const variants = {
-    sol: "bg-sol text-white hover:bg-sol-claro",
-    mar: "bg-mar text-white hover:bg-mar-claro",
-    suave: "bg-white text-sol border-2 border-sol hover:bg-sol-claro/20",
-  };
+  const map = {
+    sol: "primario",
+    mar: "secundario",
+    suave: "suave",
+  } as const;
 
   return (
-    <button
-      className={`inline-flex min-h-12 w-full items-center justify-center rounded-2xl px-5 font-titulo text-lg font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${variants[variant]} ${className}`}
-      {...props}
-    >
+    <Boton variant={map[variant]} size="md" className={className} {...props}>
       {children}
-    </button>
+    </Boton>
   );
 }
 
@@ -32,20 +33,9 @@ type FieldProps = InputHTMLAttributes<HTMLInputElement> & {
   hint?: string;
 };
 
-export function Field({ label, hint, id, className = "", ...props }: FieldProps) {
-  const fieldId = id ?? props.name;
-
-  return (
-    <label className="block w-full" htmlFor={fieldId}>
-      <span className="mb-1.5 block font-titulo text-base text-sol">{label}</span>
-      <input
-        id={fieldId}
-        className={`min-h-12 w-full rounded-2xl border-2 border-sol-claro/60 bg-white px-4 text-base outline-none focus:border-sol ${className}`}
-        {...props}
-      />
-      {hint ? <span className="mt-1 block text-sm text-black/55">{hint}</span> : null}
-    </label>
-  );
+/** @deprecated Preferir `Campo` de `@/components/ui`. */
+export function Field(props: FieldProps) {
+  return <Campo {...props} />;
 }
 
 export function AuthShell({
@@ -58,30 +48,25 @@ export function AuthShell({
   children: ReactNode;
 }) {
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-8">
-      <h1 className="font-titulo text-3xl font-semibold text-sol">{title}</h1>
-      {subtitle ? <p className="mt-2 text-base text-black/70">{subtitle}</p> : null}
+    <main className="fondo-halo-sol mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-5 py-8 safe-pb">
+      <h1 className="font-titulo text-3xl font-semibold text-primary">{title}</h1>
+      {subtitle ? (
+        <p className="mt-2 font-cuerpo text-base text-readable">{subtitle}</p>
+      ) : null}
       <div className="mt-8 flex flex-col gap-4">{children}</div>
     </main>
   );
 }
 
 export function ErrorBox({ message }: { message: string }) {
-  return (
-    <p
-      role="alert"
-      className="rounded-2xl border border-fallo/40 bg-fallo/15 px-4 py-3 text-sm text-[#8a3b28]"
-    >
-      {message}
-    </p>
-  );
+  return <EstadoError mensaje={message} titulo="Atención" />;
 }
 
 export function SuccessBox({ message }: { message: string }) {
   return (
     <p
       role="status"
-      className="rounded-2xl border border-acierto/40 bg-acierto/15 px-4 py-3 text-sm text-[#0f5c44]"
+      className="rounded-2xl border border-success/40 bg-success/15 px-4 py-3 font-cuerpo text-sm text-[#0f5c44]"
     >
       {message}
     </p>

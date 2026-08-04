@@ -56,8 +56,8 @@ CREATE OR REPLACE FUNCTION public.sumar_practica_diaria(
 )
 RETURNS public.practica_diaria
 LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
+SECURITY INVOKER
+SET search_path = ''
 AS $$
 DECLARE
   v_fila public.practica_diaria;
@@ -88,8 +88,8 @@ CREATE OR REPLACE FUNCTION public.marcar_diamante_practica_diaria(
 )
 RETURNS BOOLEAN
 LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
+SECURITY INVOKER
+SET search_path = ''
 AS $$
 DECLARE
   v_updated INTEGER;
@@ -112,7 +112,9 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.sumar_practica_diaria(UUID, DATE, INTEGER) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.sumar_practica_diaria(UUID, DATE, INTEGER) FROM anon;
 REVOKE ALL ON FUNCTION public.marcar_diamante_practica_diaria(UUID, DATE) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.marcar_diamante_practica_diaria(UUID, DATE) FROM anon;
 GRANT EXECUTE ON FUNCTION public.sumar_practica_diaria(UUID, DATE, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.marcar_diamante_practica_diaria(UUID, DATE) TO authenticated;
 
@@ -154,13 +156,13 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE p.proname = 'es_superadmin' AND n.nspname = 'public'
+    WHERE p.proname = 'es_superadmin' AND n.nspname = 'private'
   ) THEN
     EXECUTE $pol$
       CREATE POLICY "practica_diaria_select_superadmin"
         ON public.practica_diaria FOR SELECT
         TO authenticated
-        USING (public.es_superadmin())
+        USING (private.es_superadmin())
     $pol$;
   END IF;
 EXCEPTION

@@ -5,26 +5,31 @@ type Props = {
   children: ReactNode;
   className?: string;
   /** Padding interno. Por defecto cómodo para dedos infantiles. */
-  padding?: "md" | "lg";
+  padding?: "sm" | "md" | "lg";
   /** Si true, sin fondo blanco (solo para anidar). */
   transparente?: boolean;
+  /** Elevación: card estándar o hero (misión). */
+  elevacion?: "card" | "elevated";
 };
 
 /**
- * Superficie redondeada y suave. Base de listas, stats y bloques de contenido.
+ * Superficie redondeada unificada. Base de listas, stats y bloques.
  */
 export function Tarjeta({
   children,
   className,
   padding = "md",
   transparente = false,
+  elevacion = "card",
 }: Props) {
   return (
     <div
       className={cn(
-        "rounded-3xl",
-        !transparente &&
-          "bg-white shadow-[0_6px_20px_-8px_rgba(216,90,48,0.18),0_2px_6px_-2px_rgba(0,0,0,0.06)]",
+        "rounded-card",
+        !transparente && "bg-surface",
+        !transparente && elevacion === "card" && "shadow-card",
+        !transparente && elevacion === "elevated" && "shadow-elevated",
+        padding === "sm" && "px-3 py-3",
         padding === "md" && "px-4 py-4",
         padding === "lg" && "px-5 py-5",
         className,

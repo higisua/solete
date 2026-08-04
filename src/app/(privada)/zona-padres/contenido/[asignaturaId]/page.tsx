@@ -90,6 +90,7 @@ export default async function AsignaturaDetailPage({ params }: Props) {
               >
                 <option value="1">1º</option>
                 <option value="2">2º</option>
+                <option value="3">3º (extrema de 2º)</option>
               </select>
             </label>
           </SuperadminForm>

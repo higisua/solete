@@ -9,6 +9,7 @@ import {
   evaluarMedallasTrasPractica,
 } from "@/lib/juego/medallas";
 import type { MedallaDesbloqueada } from "@/lib/juego/medallas";
+import type { LegendarioDesbloqueado } from "@/lib/juego/legendarios-eval";
 import {
   otorgarDiamantesPracticaExtrema,
   registrarPracticaDelDia,
@@ -36,6 +37,8 @@ export type ResultadoGuardado = {
   misionCorta: boolean;
   /** Medallas desbloqueadas en esta partida (fanfarria en resultados). */
   medallasNuevas: MedallaDesbloqueada[];
+  /** Legendarios desbloqueados en esta partida (celebración premium). */
+  legendariosNuevos: LegendarioDesbloqueado[];
 };
 
 type PayloadFinalizar = {
@@ -50,6 +53,8 @@ type PayloadFinalizar = {
   misionDiariaId?: string | null;
   /** Solo práctica: normal (tope diario) u extremo (lotes de aciertos). */
   nivelPractica?: NivelPractica;
+  /** Mejor racha de aciertos consecutivos de esta sesión. */
+  rachaCorrectasSesion?: number;
 };
 
 /**
@@ -153,6 +158,7 @@ export async function finalizarPartida(
   let rachaDias: number | null = nino.racha_dias ?? null;
   let rachaSumoHoy = false;
   let medallasNuevas: MedallaDesbloqueada[] = [];
+  let legendariosNuevos: LegendarioDesbloqueado[] = [];
 
   // 3) Misión diaria: cerrar fila + diamantes + racha (Europe/Madrid)
   if (esMision && payload.total > 0) {
@@ -341,6 +347,16 @@ export async function finalizarPartida(
     }
   }
 
+  // 5) Legendarios: evaluación automática (no altera economía)
+  try {
+    const { evaluarLegendarios } = await import("@/lib/juego/legendarios-eval");
+    legendariosNuevos = await evaluarLegendarios(payload.ninoId, {
+      rachaCorrectasSesion: payload.rachaCorrectasSesion ?? 0,
+    });
+  } catch (err) {
+    console.warn("[finalizarPartida] legendarios:", err);
+  }
+
   return {
     ok: true,
     resultado: {
@@ -354,6 +370,7 @@ export async function finalizarPartida(
       rachaSumoHoy,
       misionCorta: payload.misionCorta,
       medallasNuevas,
+      legendariosNuevos,
     },
   };
 }

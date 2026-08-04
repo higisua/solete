@@ -41,8 +41,8 @@ export async function crearAsignatura(formData: FormData): Promise<ActionResult>
   const nombre = texto(formData, "nombre");
   const icono = texto(formData, "icono") || "📚";
   const curso = texto(formData, "curso");
-  if (!nombre || (curso !== "1" && curso !== "2")) {
-    return { ok: false, error: "Nombre y curso son obligatorios." };
+  if (!nombre || (curso !== "1" && curso !== "2" && curso !== "3")) {
+    return { ok: false, error: "Nombre y curso (1, 2 o 3) son obligatorios." };
   }
 
   const supabase = await createClient();
@@ -59,7 +59,7 @@ export async function actualizarAsignatura(formData: FormData): Promise<ActionRe
   const nombre = texto(formData, "nombre");
   const icono = texto(formData, "icono") || "📚";
   const curso = texto(formData, "curso");
-  if (!id || !nombre || (curso !== "1" && curso !== "2")) {
+  if (!id || !nombre || (curso !== "1" && curso !== "2" && curso !== "3")) {
     return { ok: false, error: "Datos incompletos." };
   }
 

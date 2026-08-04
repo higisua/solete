@@ -19,8 +19,9 @@ type PropsHueco = {
   className?: string;
   size?: "sm" | "md" | "lg";
   nombre?: never;
-  imagenSrc?: never;
-  rareza?: never;
+  /** Imagen bloqueada (legendarios): silueta oscurecida + borde de rareza. */
+  imagenBloqueada?: string;
+  rarezaBloqueada?: RarezaCromo;
 };
 
 type Props = PropsPoseido | PropsHueco;
@@ -39,6 +40,43 @@ export function CromoCara(props: Props) {
   const radio = RADIOS[size];
 
   if (!props.loTiene) {
+    const bloqueada = props.imagenBloqueada;
+    const rareza = props.rarezaBloqueada;
+    const colorBorde = rareza ? COLORES_RAREZA[rareza].hex : undefined;
+
+    if (bloqueada && colorBorde) {
+      return (
+        <div
+          className={cn(
+            "relative aspect-square w-full overflow-hidden bg-[#EDE8E0]",
+            radio,
+            props.className,
+          )}
+          style={{
+            boxShadow: `0 0 0 3px ${colorBorde}, 0 8px 18px -10px rgba(0,0,0,0.22)`,
+          }}
+          aria-label="Legendario pendiente"
+        >
+          <Image
+            src={bloqueada}
+            alt=""
+            fill
+            sizes={
+              size === "lg"
+                ? "(max-width: 448px) 70vw, 280px"
+                : size === "md"
+                  ? "(max-width: 448px) 45vw, 180px"
+                  : "(max-width: 448px) 22vw, 96px"
+            }
+            className="object-cover brightness-[0.35] contrast-125 saturate-0"
+          />
+          <span className="absolute inset-0 flex items-center justify-center font-titulo text-2xl font-semibold text-white/90 sm:text-3xl">
+            ?
+          </span>
+        </div>
+      );
+    }
+
     return (
       <div
         className={cn(

@@ -39,18 +39,18 @@ export function ZonaPadresShell({ tabs, children, tituloFamilia }: Props) {
   const muchasTabs = tabs.length > 4;
 
   return (
-    <div className="fondo-halo-sol mx-auto flex min-h-dvh w-full max-w-md flex-col">
-      <header className="flex items-center justify-between gap-3 px-5 pb-3 pt-5">
+    <div className="fondo-halo-sol mx-auto flex min-h-dvh w-full max-w-lg flex-col">
+      <header className="flex items-center justify-between gap-3 px-5 pb-3 pt-5 safe-pt">
         <div className="min-w-0">
-          <p className="font-cuerpo text-xs text-black/45">Zona padres</p>
-          <p className="truncate font-titulo text-xl font-semibold text-sol">
+          <p className="font-cuerpo text-xs text-readable">Zona padres</p>
+          <p className="truncate font-titulo text-xl font-semibold text-primary">
             {tituloFamilia}
           </p>
         </div>
         <form action={salirZonaPadres}>
           <button
             type="submit"
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-2xl bg-white px-3.5 font-titulo text-sm font-semibold text-mar shadow-[0_4px_14px_-6px_rgba(29,158,117,0.35)] transition active:scale-[0.97]"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-2xl bg-surface px-3.5 font-titulo text-sm font-semibold text-secondary shadow-card transition active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             <Gamepad2 className="h-4 w-4 stroke-[2]" aria-hidden />
             Al juego
@@ -73,7 +73,7 @@ export function ZonaPadresShell({ tabs, children, tituloFamilia }: Props) {
       </div>
 
       <nav
-        className="fixed bottom-0 left-0 right-0 z-30 border-t border-black/[0.06] bg-white/90 backdrop-blur-md"
+        className="fixed bottom-0 left-0 right-0 z-30 border-t border-black/[0.06] bg-surface/95 backdrop-blur-md safe-pb"
         aria-label="Secciones zona padres"
       >
         <div
@@ -90,10 +90,10 @@ export function ZonaPadresShell({ tabs, children, tituloFamilia }: Props) {
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  "flex min-h-14 min-w-[4.25rem] flex-col items-center justify-center gap-0.5 rounded-2xl px-2 font-titulo text-[11px] font-semibold transition",
+                  "flex min-h-14 min-w-[4.25rem] flex-col items-center justify-center gap-0.5 rounded-2xl px-2 font-titulo text-[11px] font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
                   activo
-                    ? "bg-sol/10 text-sol shadow-[inset_0_0_0_1.5px_rgba(216,90,48,0.2)]"
-                    : "text-black/40 hover:text-black/55",
+                    ? "bg-sol/10 text-primary shadow-[inset_0_0_0_1.5px_rgba(216,90,48,0.2)]"
+                    : "text-readable hover:text-text-primary",
                 )}
               >
                 <Icono

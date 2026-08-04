@@ -1,7 +1,7 @@
 "use client";
 
 import { Delete } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/cn";
 
 type Props = {
@@ -9,13 +9,15 @@ type Props = {
   onChange: (valor: string) => void;
   onConfirmar: () => void;
   disabled?: boolean;
-  /** Tras responder: pinta el display según acierto. */
   revelada?: boolean;
   acerto?: boolean | null;
 };
 
 const TECLAS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "borrar", "0", "ok"] as const;
 
+/**
+ * Teclado numérico estilo app moderna: teclas grandes y feedback inmediato.
+ */
 export function TecladoNumerico({
   valor,
   onChange,
@@ -24,6 +26,8 @@ export function TecladoNumerico({
   revelada = false,
   acerto = null,
 }: Props) {
+  const reducir = useReducedMotion();
+
   function pulsar(tecla: (typeof TECLAS)[number]) {
     if (disabled || revelada) return;
     if (tecla === "borrar") {
@@ -40,18 +44,28 @@ export function TecladoNumerico({
 
   return (
     <div className="w-full">
-      <div
+      <motion.div
         className={cn(
-          "mb-4 flex min-h-16 items-center justify-center rounded-[18px] border-2 px-4 py-3 text-center font-titulo text-4xl font-semibold transition-colors",
-          revelada && acerto === true && "border-mar bg-mar-claro/25 text-mar",
-          revelada && acerto === false && "border-sol-claro bg-fallo/25 text-sol",
-          !revelada && "border-[#E8D9C8] bg-[#FFFCFA] text-sol",
+          "mb-4 flex min-h-[4.25rem] items-center justify-center rounded-[1.35rem] border-[2.5px] px-4 py-3 text-center font-titulo text-4xl font-semibold transition-colors sm:min-h-[4.5rem] sm:text-5xl",
+          revelada && acerto === true && "border-mar bg-mar-claro/30 text-mar",
+          revelada &&
+            acerto === false &&
+            "border-sol-claro/60 bg-[#FFF5EE] text-primary",
+          !revelada && "border-border bg-surface text-primary",
         )}
         aria-live="polite"
+        animate={
+          revelada && !reducir
+            ? acerto
+              ? { scale: [1, 1.045, 1] }
+              : { x: [0, -5, 5, -3, 3, 0] }
+            : { scale: 1, x: 0 }
+        }
+        transition={{ duration: 0.32 }}
       >
         {valor || "—"}
-      </div>
-      <div className="grid grid-cols-3 gap-2.5">
+      </motion.div>
+      <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
         {TECLAS.map((tecla) => {
           const esOk = tecla === "ok";
           const esBorrar = tecla === "borrar";
@@ -61,20 +75,26 @@ export function TecladoNumerico({
               type="button"
               disabled={disabled || revelada}
               onClick={() => pulsar(tecla)}
-              whileTap={disabled || revelada ? undefined : { scale: 0.94 }}
-              transition={{ type: "spring", stiffness: 420, damping: 28 }}
+              whileTap={
+                disabled || revelada || reducir
+                  ? undefined
+                  : { scale: 0.92, y: 2 }
+              }
+              transition={{ duration: 0.08 }}
+              aria-label={esBorrar ? "Borrar" : esOk ? "Confirmar" : tecla}
               className={cn(
-                "flex min-h-14 items-center justify-center rounded-[16px] font-titulo text-2xl font-semibold",
-                esOk && "bg-mar text-white shadow-[0_4px_0_0_rgba(18,110,80,0.35)]",
+                "flex min-h-[3.65rem] items-center justify-center rounded-[1.15rem] font-titulo text-[1.65rem] font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-16 sm:text-3xl",
+                esOk &&
+                  "bg-secondary text-text-inverse shadow-[0_4px_0_0_rgba(18,110,80,0.35)]",
                 esBorrar &&
-                  "bg-sol-claro/35 text-sol shadow-[0_3px_0_0_rgba(216,90,48,0.15)]",
+                  "bg-[#FFE8DC] text-primary shadow-[0_4px_0_0_rgba(216,90,48,0.14)]",
                 !esOk &&
                   !esBorrar &&
-                  "border-2 border-[#E8D9C8] bg-white text-sol shadow-[0_3px_0_0_rgba(216,90,48,0.1)]",
+                  "border-[2.5px] border-border bg-surface text-primary shadow-[0_4px_0_0_rgba(216,90,48,0.1)]",
               )}
             >
               {esBorrar ? (
-                <Delete className="h-6 w-6 stroke-[1.75]" aria-label="Borrar" />
+                <Delete className="h-7 w-7 stroke-[1.75]" aria-hidden />
               ) : esOk ? (
                 "OK"
               ) : (

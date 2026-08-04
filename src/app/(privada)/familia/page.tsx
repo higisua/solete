@@ -4,6 +4,7 @@ import { cerrarSesion } from "@/app/actions/auth";
 import { CompletarFamiliaForm } from "@/components/CompletarFamiliaForm";
 import { Button } from "@/components/auth-ui";
 import { PublicImage } from "@/components/PublicImage";
+import { Solete } from "@/components/solete";
 import { createClient } from "@/lib/supabase/server";
 import { getFamiliaActual, getNinosDeMiFamilia } from "@/lib/familia";
 import { AVATARES } from "@/lib/avatares";
@@ -30,14 +31,7 @@ export default async function FamiliaPage() {
   if (ninos.length === 0) {
     return (
       <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center px-5 py-10 text-center">
-        <PublicImage
-          path="assets/logos/solete_solo_logo.png"
-          alt="Sol"
-          width={160}
-          height={160}
-          priority
-          className="h-36 w-36 object-contain"
-        />
+        <Solete mood="wave" size="xl" priority alt="" />
         <h1 className="mt-6 font-titulo text-3xl font-semibold text-sol">
           ¡Hola, {familia.nombre}!
         </h1>

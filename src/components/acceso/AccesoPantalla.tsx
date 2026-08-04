@@ -10,6 +10,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import { registrarFamilia } from "@/app/actions/auth";
 import { CampoAcceso } from "@/components/acceso/CampoAcceso";
 import { PinCuatroDigitos } from "@/components/acceso/PinCuatroDigitos";
+import { Solete } from "@/components/solete";
 import { mensajeErrorAuth } from "@/lib/auth-errors";
 import { publicAssetClient } from "@/lib/public-asset-client";
 import { createClient } from "@/lib/supabase/client";
@@ -95,7 +96,7 @@ export function AccesoPantalla({ pestanaInicial = "entrar" }: Props) {
           className="h-auto w-[60%] max-w-[280px] object-contain"
         />
 
-        <div className="mt-8 w-full rounded-[22px] bg-white px-5 pb-7 pt-5 shadow-[0_12px_40px_-16px_rgba(216,90,48,0.28),0_4px_12px_-4px_rgba(0,0,0,0.06)] sm:px-6">
+        <div className="mt-8 w-full rounded-card bg-surface px-5 pb-7 pt-5 shadow-elevated sm:px-6">
           {/* Pestañas */}
           <div
             role="tablist"
@@ -104,8 +105,8 @@ export function AccesoPantalla({ pestanaInicial = "entrar" }: Props) {
           >
             {(
               [
-                { id: "entrar", label: "Entrar" },
-                { id: "crear", label: "Crear cuenta" },
+                { id: "entrar", label: "Entrar", panel: "panel-entrar" },
+                { id: "crear", label: "Crear cuenta", panel: "panel-crear" },
               ] as const
             ).map((tab) => {
               const activa = pestana === tab.id;
@@ -114,10 +115,12 @@ export function AccesoPantalla({ pestanaInicial = "entrar" }: Props) {
                   key={tab.id}
                   type="button"
                   role="tab"
+                  id={`tab-${tab.id}`}
                   aria-selected={activa}
+                  aria-controls={tab.panel}
                   onClick={() => irA(tab.id)}
-                  className={`relative z-10 min-h-11 pb-2.5 font-titulo text-lg font-semibold transition-colors ${
-                    activa ? "text-sol" : "text-black/40 hover:text-black/55"
+                  className={`relative z-10 min-h-11 pb-2.5 font-titulo text-lg font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                    activa ? "text-primary" : "text-readable hover:text-text-primary"
                   }`}
                 >
                   {tab.label}
@@ -137,28 +140,11 @@ export function AccesoPantalla({ pestanaInicial = "entrar" }: Props) {
             })}
           </div>
 
-          {/* Mascota flotante */}
+          {/* Compañero Solete */}
           <div className="mt-5 flex justify-center">
-            <motion.div
-              className="flex h-[5.5rem] w-[5.5rem] items-center justify-center rounded-full bg-[#FEF3DA]"
-              animate={reducir ? undefined : { y: [0, -7, 0] }}
-              transition={
-                reducir
-                  ? undefined
-                  : { duration: 3.2, repeat: Infinity, ease: "easeInOut" }
-              }
-            >
-              <Image
-                src={publicAssetClient("assets/logos/solete_solo_logo.png")}
-                alt=""
-                width={88}
-                height={88}
-                unoptimized
-                priority
-                className="h-[4.25rem] w-[4.25rem] object-contain"
-                aria-hidden
-              />
-            </motion.div>
+            <div className="flex h-[5.5rem] w-[5.5rem] items-center justify-center rounded-full bg-[#FEF3DA]">
+              <Solete mood="wave" size="md" priority alt="" />
+            </div>
           </div>
 
           <div className="mt-5 min-h-[20rem]">
@@ -166,7 +152,9 @@ export function AccesoPantalla({ pestanaInicial = "entrar" }: Props) {
               {pestana === "entrar" ? (
                 <motion.div
                   key="entrar"
+                  id="panel-entrar"
                   role="tabpanel"
+                  aria-labelledby="tab-entrar"
                   initial={reducir ? false : { opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={reducir ? undefined : { opacity: 0, y: -6 }}
@@ -219,7 +207,9 @@ export function AccesoPantalla({ pestanaInicial = "entrar" }: Props) {
               ) : (
                 <motion.div
                   key="crear"
+                  id="panel-crear"
                   role="tabpanel"
+                  aria-labelledby="tab-crear"
                   initial={reducir ? false : { opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={reducir ? undefined : { opacity: 0, y: -6 }}

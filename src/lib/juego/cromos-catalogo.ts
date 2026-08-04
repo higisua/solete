@@ -2,7 +2,16 @@
  * Economía y catálogo de cromos Solete (arte real en /public/assets/cromos/).
  */
 
-export type RarezaCromo = "comun" | "raro" | "especial";
+/**
+ * Rarezas de cromo.
+ * `legendary` está tipada y con estilo/precio preparados, pero
+ * permanece oculta: no hay entradas en el catálogo visible ni en probsSobre.
+ */
+export type RarezaCromo = "comun" | "raro" | "especial" | "legendary";
+
+/** Rarezas que el niño puede ver hoy (tienda, álbum, sobres). */
+export const RAREZAS_VISIBLES = ["comun", "raro", "especial"] as const;
+export type RarezaVisible = (typeof RAREZAS_VISIBLES)[number];
 
 export type TematicaId =
   | "animales"
@@ -19,13 +28,18 @@ export const CROMOS_ECONOMIA = {
     comun: 2,
     raro: 5,
     especial: 10,
+    /** Preparado para Fase legendarios; no usado en tienda/sobres aún. */
+    legendary: 25,
   },
   /** Sobre clásico: 1 cromo. */
   precioSobre: 3,
   /** Sobre grande: 3 cromos. */
   precioSobreGrande: 10,
   cromosSobreGrande: 3,
-  /** Probabilidades acumuladas del sobre (deben sumar 1). */
+  /**
+   * Probabilidades del sobre (deben sumar 1).
+   * Sin legendary: permanece oculto al sorteo.
+   */
   probsSobre: {
     comun: 0.65,
     raro: 0.25,
@@ -35,6 +49,10 @@ export const CROMOS_ECONOMIA = {
 
 export function precioPorRareza(rareza: RarezaCromo): number {
   return CROMOS_ECONOMIA.precios[rareza];
+}
+
+export function esRarezaVisible(rareza: RarezaCromo): rareza is RarezaVisible {
+  return (RAREZAS_VISIBLES as readonly string[]).includes(rareza);
 }
 
 /** Mitad redondeada del precio del cromo (devolución por repetido). */

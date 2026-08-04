@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getNinoActivoId } from "@/lib/nino-activo";
-import type { Asignatura, Nino } from "@/types/database";
+import type { Asignatura, CursoContenido, Nino } from "@/types/database";
 
 /**
  * Devuelve un niño si pertenece a la familia del adulto (RLS lo garantiza).
@@ -23,7 +23,9 @@ export async function getNinoActivoValidado(): Promise<Nino | null> {
   return getNinoDeMiFamilia(id);
 }
 
-export async function getAsignaturasPorCurso(curso: "1" | "2"): Promise<Asignatura[]> {
+export async function getAsignaturasPorCurso(
+  curso: CursoContenido,
+): Promise<Asignatura[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("asignaturas")

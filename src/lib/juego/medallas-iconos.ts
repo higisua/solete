@@ -1,5 +1,7 @@
 import {
   BookOpen,
+  Building2,
+  Bus,
   CalendarDays,
   CheckCircle2,
   Crosshair,
@@ -7,11 +9,14 @@ import {
   Dumbbell,
   Flame,
   LayoutGrid,
+  PawPrint,
   Sparkles,
   Star,
   Sun,
   Target,
   Trophy,
+  UtensilsCrossed,
+  Volleyball,
   Zap,
   type LucideIcon,
 } from "lucide-react";
@@ -41,11 +46,11 @@ export const ICONOS_MEDALLA: Record<MedallaId, LucideIcon> = {
   practica_100: Dumbbell,
   primer_cromo: LayoutGrid,
   coleccion_10: LayoutGrid,
-  album_animales: LayoutGrid,
-  album_ciudades: LayoutGrid,
-  album_comidas: LayoutGrid,
-  album_deportes: LayoutGrid,
-  album_transportes: LayoutGrid,
+  album_animales: PawPrint,
+  album_ciudades: Building2,
+  album_comidas: UtensilsCrossed,
+  album_deportes: Volleyball,
+  album_transportes: Bus,
 };
 
 /** Medallas con barra de progreso (hitos acumulativos). */

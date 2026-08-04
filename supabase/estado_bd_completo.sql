@@ -293,68 +293,68 @@
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
--- 4.1 es_superadmin()  — fase2_esquema (luego SOBREESCRITA por fase5b)
+-- 4.1 es_superadmin()  — fase2 → fase5b → fase9
 -- -----------------------------------------------------------------------------
--- Estado FINAL esperado (fase5b_superadmin_rls.sql):
+-- Estado FINAL esperado (fase9_security_hardening.sql):
 --   RETURNS BOOLEAN
 --   LANGUAGE sql STABLE
 --   SECURITY DEFINER
---   SET search_path = public
+--   SET search_path = ''
 --   Cuerpo: EXISTS familia del auth.uid() con rol = 'superadmin'
---   GRANT EXECUTE → authenticated; REVOKE FROM PUBLIC
+--   GRANT EXECUTE → authenticated; REVOKE PUBLIC/anon
 --
 -- Motivo SECURITY DEFINER: evitar recursión RLS al listar todas las familias.
+-- El Advisor puede seguir avisando "Signed-In Users Can Execute" → intencional.
 
 -- -----------------------------------------------------------------------------
--- 4.2 nino_de_mi_familia(p_nino_id UUID)  — fase2_esquema
+-- 4.2 nino_de_mi_familia(p_nino_id UUID)  — fase2 / fase9
 -- -----------------------------------------------------------------------------
 --   RETURNS BOOLEAN
---   LANGUAGE sql STABLE
---   SECURITY INVOKER (default)
+--   LANGUAGE sql STABLE SECURITY INVOKER SET search_path = ''
 --   Cuerpo: niño pertenece a familia cuyo user_id = auth.uid()
 
 -- -----------------------------------------------------------------------------
--- 4.3 proteger_rol_familia()  — fase2_esquema (función de trigger)
+-- 4.3 proteger_rol_familia()  — fase2 / fase9 (función de trigger)
 -- -----------------------------------------------------------------------------
 --   RETURNS TRIGGER
---   LANGUAGE plpgsql
+--   LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
 --   Impide cambiar rol salvo si OLD.rol ya era 'superadmin'
 --   (el dashboard / service role bypasea triggers? → en práctica el cambio de
 --    rol a superadmin se hace desde el Table Editor con privilegios elevados)
 
 -- -----------------------------------------------------------------------------
--- 4.4 gastar_diamantes(p_nino_id UUID, p_cantidad INTEGER)  — fase6_cromos
+-- 4.4 gastar_diamantes(p_nino_id UUID, p_cantidad INTEGER)  — fase6 / fase9
 -- -----------------------------------------------------------------------------
 --   RETURNS INTEGER (nuevo saldo)
---   LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+--   LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
 --   Exige nino_de_mi_familia; UPDATE atómico WHERE diamantes >= cantidad
 --   Excepciones: cantidad_invalida | sin_permiso | saldo_insuficiente
---   GRANT EXECUTE → authenticated
+--   GRANT EXECUTE → authenticated; REVOKE PUBLIC/anon
 
 -- -----------------------------------------------------------------------------
--- 4.5 devolver_diamantes(p_nino_id UUID, p_cantidad INTEGER)  — fase6_cromos
+-- 4.5 devolver_diamantes(p_nino_id UUID, p_cantidad INTEGER)  — fase6 / fase9
 -- -----------------------------------------------------------------------------
 --   RETURNS INTEGER (nuevo saldo)
---   LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+--   LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
 --   Suma diamantes (rollback / repetido de sobre)
 --   Excepciones: cantidad_invalida | sin_permiso | nino_no_encontrado
---   GRANT EXECUTE → authenticated
+--   GRANT EXECUTE → authenticated; REVOKE PUBLIC/anon
 
 -- -----------------------------------------------------------------------------
--- 4.6 sumar_practica_diaria(p_nino_id, p_fecha, p_preguntas)  — fase6_practica_diaria
+-- 4.6 sumar_practica_diaria(p_nino_id, p_fecha, p_preguntas)  — fase6 / fase9
 -- -----------------------------------------------------------------------------
 --   RETURNS public.practica_diaria
---   LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+--   LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
 --   UPSERT por (nino_id, fecha) sumando preguntas
---   GRANT EXECUTE → authenticated
+--   GRANT EXECUTE → authenticated; REVOKE PUBLIC/anon
 
 -- -----------------------------------------------------------------------------
--- 4.7 marcar_diamante_practica_diaria(p_nino_id, p_fecha)  — fase6_practica_diaria
+-- 4.7 marcar_diamante_practica_diaria(p_nino_id, p_fecha)  — fase6 / fase9
 -- -----------------------------------------------------------------------------
 --   RETURNS BOOLEAN (true si marcó ahora)
---   LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+--   LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
 --   UPDATE solo si diamante_otorgado = FALSE AND preguntas >= 10
---   GRANT EXECUTE → authenticated
+--   GRANT EXECUTE → authenticated; REVOKE PUBLIC/anon
 
 -- =============================================================================
 -- §5. TRIGGERS (1)
@@ -462,6 +462,14 @@
 --   fase6_seed_preguntas_2ep.sql → DELETE asignaturas WHERE curso='2' + insert pack
 --     Asignaturas: Matemáticas, Lengua, English, Natural Science
 --     ~1043 preguntas (sin Ciencias Sociales)
+--   fase8_curso_3_contenido.sql → permite curso='3' en asignaturas
+--   fase8_seed_preguntas_3ep.sql → DELETE asignaturas WHERE curso='3' + insert pack
+--     Asignaturas: Matemáticas, Lengua (~900 preguntas)
+--     Uso: práctica EXTREMA de 2º
+--   fase9_security_hardening.sql → search_path='', REVOKE anon/PUBLIC,
+--     RPCs economía pasan a SECURITY INVOKER (RLS aplica)
+--   fase9b_security_advisor_restantes.sql → private.es_superadmin +
+--     endurece rls_auto_enable (cierra avisos DEFINER restantes)
 --
 -- fase2_seed.sql (OBSOLETO para contenido):
 --   TRUNCATE preguntas, temas, asignaturas CASCADE

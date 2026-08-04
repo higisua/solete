@@ -136,11 +136,21 @@ COMMENT ON TABLE public.sesiones IS 'Sesiones de juego (misión o libre)';
 -- Funciones STABLE usadas en políticas para no repetir subconsultas.
 -- SECURITY INVOKER (por defecto): respetan RLS de las tablas que consultan.
 
+-- Schema private: helpers RLS fuera de la API REST (no exponer en Settings → API).
+CREATE SCHEMA IF NOT EXISTS private;
+REVOKE ALL ON SCHEMA private FROM PUBLIC;
+REVOKE ALL ON SCHEMA private FROM anon;
+GRANT USAGE ON SCHEMA private TO authenticated;
+GRANT USAGE ON SCHEMA private TO service_role;
+
 -- ¿La familia del usuario autenticado es superadmin?
-CREATE OR REPLACE FUNCTION public.es_superadmin()
+-- SECURITY DEFINER evita recursión RLS; vive en private (no RPC público).
+CREATE OR REPLACE FUNCTION private.es_superadmin()
 RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
+SECURITY DEFINER
+SET search_path = ''
 AS $$
   SELECT EXISTS (
     SELECT 1
@@ -150,11 +160,18 @@ AS $$
   );
 $$;
 
+REVOKE ALL ON FUNCTION private.es_superadmin() FROM PUBLIC;
+REVOKE ALL ON FUNCTION private.es_superadmin() FROM anon;
+GRANT EXECUTE ON FUNCTION private.es_superadmin() TO authenticated;
+GRANT EXECUTE ON FUNCTION private.es_superadmin() TO service_role;
+
 -- ¿Este niño pertenece a la familia del usuario autenticado?
 CREATE OR REPLACE FUNCTION public.nino_de_mi_familia(p_nino_id UUID)
 RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
+SECURITY INVOKER
+SET search_path = ''
 AS $$
   SELECT EXISTS (
     SELECT 1
@@ -208,6 +225,8 @@ CREATE POLICY "familias_delete_propia"
 CREATE OR REPLACE FUNCTION public.proteger_rol_familia()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = ''
 AS $$
 BEGIN
   IF NEW.rol IS DISTINCT FROM OLD.rol AND OLD.rol IS DISTINCT FROM 'superadmin' THEN
@@ -268,8 +287,8 @@ CREATE POLICY "asignaturas_select_autenticados"
 CREATE POLICY "asignaturas_write_superadmin"
   ON public.asignaturas FOR ALL
   TO authenticated
-  USING (public.es_superadmin())
-  WITH CHECK (public.es_superadmin());
+  USING (private.es_superadmin())
+  WITH CHECK (private.es_superadmin());
 
 CREATE POLICY "temas_select_autenticados"
   ON public.temas FOR SELECT
@@ -279,8 +298,8 @@ CREATE POLICY "temas_select_autenticados"
 CREATE POLICY "temas_write_superadmin"
   ON public.temas FOR ALL
   TO authenticated
-  USING (public.es_superadmin())
-  WITH CHECK (public.es_superadmin());
+  USING (private.es_superadmin())
+  WITH CHECK (private.es_superadmin());
 
 CREATE POLICY "preguntas_select_autenticados"
   ON public.preguntas FOR SELECT
@@ -290,8 +309,8 @@ CREATE POLICY "preguntas_select_autenticados"
 CREATE POLICY "preguntas_write_superadmin"
   ON public.preguntas FOR ALL
   TO authenticated
-  USING (public.es_superadmin())
-  WITH CHECK (public.es_superadmin());
+  USING (private.es_superadmin())
+  WITH CHECK (private.es_superadmin());
 
 -- Nota: en asignaturas/temas/preguntas coexisten una política SELECT (todos)
 -- y una FOR ALL (superadmin). PostgreSQL aplica OR entre políticas del mismo

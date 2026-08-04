@@ -5,27 +5,33 @@ import { cn } from "@/lib/cn";
 import { ICONOS_MEDALLA } from "@/lib/juego/medallas-iconos";
 import type { MedallaId } from "@/lib/juego/medallas-catalogo";
 
+export type InsigniaEstado = "earned" | "almost" | "locked";
+
 type Props = {
   id: MedallaId;
-  conseguida: boolean;
-  /** sm = rejilla · lg = fanfarria */
-  size?: "sm" | "lg";
+  conseguida?: boolean;
+  /** Estado visual; si no se pasa, se deriva de `conseguida`. */
+  estado?: InsigniaEstado;
+  /** sm = rejilla · md = featured · lg = fanfarria */
+  size?: "sm" | "md" | "lg";
   className?: string;
-  /** Halo pulsante (fanfarria). */
+  /** Halo pulsante (fanfarria / conseguida). */
   conHalo?: boolean;
 };
 
 const TAM = {
-  sm: { caja: "h-16 w-16", icono: "h-7 w-7", destello: "h-2.5 w-2.5" },
+  sm: { caja: "h-14 w-14", icono: "h-6 w-6", destello: "h-2 w-2" },
+  md: { caja: "h-16 w-16", icono: "h-7 w-7", destello: "h-2.5 w-2.5" },
   lg: { caja: "h-36 w-36", icono: "h-16 w-16", destello: "h-4 w-4" },
 } as const;
 
 /**
- * Insignia circular compartida: dorada si conseguida, gris si pendiente.
+ * Insignia circular: dorada (conseguida), viva (casi), crema curiosa (bloqueada).
  */
 export function InsigniaMedalla({
   id,
-  conseguida,
+  conseguida = false,
+  estado,
   size = "sm",
   className,
   conHalo = false,
@@ -33,10 +39,12 @@ export function InsigniaMedalla({
   const Icono = ICONOS_MEDALLA[id];
   const t = TAM[size];
   const reducir = useReducedMotion();
+  const visual: InsigniaEstado =
+    estado ?? (conseguida ? "earned" : "locked");
 
   return (
     <div className={cn("relative inline-flex items-center justify-center", className)}>
-      {conHalo && conseguida && !reducir ? (
+      {conHalo && visual === "earned" && !reducir ? (
         <motion.span
           aria-hidden
           className="absolute inset-[-18%] rounded-full bg-[radial-gradient(circle,rgba(250,199,117,0.55)_0%,rgba(216,90,48,0.12)_55%,transparent_72%)]"
@@ -49,16 +57,19 @@ export function InsigniaMedalla({
         className={cn(
           "relative flex items-center justify-center rounded-full",
           t.caja,
-          conseguida
-            ? "bg-[linear-gradient(145deg,#F8E0A0_0%,#E8B84A_42%,#C98A1A_100%)] shadow-[0_8px_20px_-6px_rgba(180,120,20,0.55)]"
-            : "bg-[#E4E0D8] shadow-inner",
+          visual === "earned" &&
+            "bg-[linear-gradient(145deg,#FFE9A8_0%,#F0C05A_38%,#D4A017_72%,#B8860B_100%)] shadow-[0_8px_22px_-6px_rgba(180,120,20,0.6)] ring-2 ring-[#F8E0A0]/80",
+          visual === "almost" &&
+            "bg-[linear-gradient(145deg,#FFF3DC_0%,#FAC775_55%,#E8A84A_100%)] shadow-[0_6px_16px_-8px_rgba(216,90,48,0.35)] ring-2 ring-sol/35",
+          visual === "locked" &&
+            "bg-[linear-gradient(145deg,#FFF8ED_0%,#F3E6D0_100%)] shadow-card ring-1 ring-black/5",
         )}
       >
-        {conseguida ? (
+        {visual === "earned" ? (
           <span
             aria-hidden
             className={cn(
-              "absolute right-[14%] top-[14%] rounded-full bg-white/80 blur-[0.5px]",
+              "absolute right-[12%] top-[12%] rounded-full bg-white/85 blur-[0.5px]",
               t.destello,
             )}
           />
@@ -66,9 +77,9 @@ export function InsigniaMedalla({
         <Icono
           className={cn(
             t.icono,
-            conseguida
-              ? "stroke-[#6B4A12] stroke-[1.75]"
-              : "stroke-[#9A958C] stroke-[1.6]",
+            visual === "earned" && "stroke-[#5C3D0A] stroke-[1.85]",
+            visual === "almost" && "stroke-[#9A4E1C] stroke-[1.75]",
+            visual === "locked" && "stroke-[#B8A48A] stroke-[1.6]",
           )}
           aria-hidden
         />

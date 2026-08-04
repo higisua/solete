@@ -1,16 +1,21 @@
 "use client";
 
-import Link from "next/link";
-import { ChevronLeft, Gem } from "lucide-react";
+import { useMemo } from "react";
 import {
   Aparecer,
-  AparecerItem,
-  ListaAparecer,
+  CabeceraNino,
   Pantalla,
 } from "@/components/ui";
-import { InsigniaMedalla } from "@/components/medallas/InsigniaMedalla";
+import { MedalGroup } from "@/components/medallas/MedalGroup";
+import { NextMedals } from "@/components/medallas/NextMedals";
+import { SummaryHeader } from "@/components/medallas/SummaryHeader";
+import { GRUPOS_MEDALLAS } from "@/lib/juego/medallas-grupos";
+import {
+  medallasCercanas,
+  mensajeProxima,
+  moodMedallas,
+} from "@/lib/juego/medallas-ui";
 import type { MedallaVistaItem } from "@/lib/juego/medallas-vista";
-import { cn } from "@/lib/cn";
 
 type Props = {
   conseguidas: number;
@@ -18,102 +23,115 @@ type Props = {
   items: MedallaVistaItem[];
 };
 
+/**
+ * Panel de retos de medallas (Fase 8).
+ * No modifica desbloqueos ni recompensas.
+ */
 export function MedallasVista({ conseguidas, total, items }: Props) {
+  const { cercanas, earned, lockedByGroup, mensaje, mood } = useMemo(() => {
+    const next = medallasCercanas(items, 4);
+    const nextIds = new Set(next.map((m) => m.id));
+    const earnedItems = items.filter((m) => m.conseguida);
+    const lockedItems = items.filter(
+      (m) => !m.conseguida && !nextIds.has(m.id),
+    );
+
+    const byGroup = GRUPOS_MEDALLAS.map((g) => ({
+      ...g,
+      earned: earnedItems.filter((m) => g.medallaIds.includes(m.id)),
+      locked: lockedItems.filter((m) => g.medallaIds.includes(m.id)),
+    }));
+
+    return {
+      cercanas: next,
+      earned: earnedItems,
+      lockedByGroup: byGroup,
+      mensaje: mensajeProxima(next[0] ?? null),
+      mood: moodMedallas({
+        conseguidas,
+        total,
+        cercanas: next.length,
+      }),
+    };
+  }, [items, conseguidas, total]);
+
+  const hayBloqueadas = lockedByGroup.some((g) => g.locked.length > 0);
+
   return (
-    <Pantalla className="fondo-halo-sol pb-10 pt-5">
+    <Pantalla className="fondo-halo-sol pb-10 pt-5" sinAtmosfera>
       <Aparecer>
-        <header className="relative flex items-center justify-center">
-          <Link
-            href="/mundo"
-            aria-label="Volver"
-            className="absolute left-0 flex h-11 w-11 items-center justify-center rounded-full bg-black/[0.06] text-black/45 transition hover:bg-black/10"
-          >
-            <ChevronLeft className="h-6 w-6 stroke-[1.75]" />
-          </Link>
-          <h1 className="font-titulo text-2xl font-semibold text-sol">
-            Medallas
-          </h1>
-        </header>
+        <CabeceraNino titulo="Medallas" />
       </Aparecer>
 
-      <Aparecer delay={0.06} className="mt-3 text-center">
-        <p className="font-cuerpo text-base text-black/55">
-          Has conseguido{" "}
-          <span className="font-titulo font-semibold text-sol">
-            {conseguidas}
-          </span>{" "}
-          de{" "}
-          <span className="font-titulo font-semibold text-sol">{total}</span>{" "}
-          medallas
-        </p>
+      <Aparecer delay={0.06} className="mt-4">
+        <SummaryHeader
+          conseguidas={conseguidas}
+          total={total}
+          mensaje={mensaje}
+          mood={mood}
+        />
       </Aparecer>
 
-      <ListaAparecer className="mt-6 grid grid-cols-2 gap-3" as="ul">
-        {items.map((m) => (
-          <AparecerItem key={m.id} className="list-none">
-            <TarjetaMedalla item={m} />
-          </AparecerItem>
-        ))}
-      </ListaAparecer>
-    </Pantalla>
-  );
-}
+      <Aparecer delay={0.1} className="mt-6">
+        <NextMedals items={cercanas} />
+      </Aparecer>
 
-function TarjetaMedalla({ item }: { item: MedallaVistaItem }) {
-  const { conseguida, progreso } = item;
-  const pct =
-    progreso && progreso.meta > 0
-      ? Math.min(100, Math.round((progreso.actual / progreso.meta) * 100))
-      : 0;
-
-  return (
-    <article
-      className={cn(
-        "flex h-full flex-col items-center rounded-[22px] bg-white px-3 pb-4 pt-4 text-center shadow-[0_10px_28px_-14px_rgba(216,90,48,0.28)]",
-        !conseguida && "opacity-[0.92]",
-      )}
-    >
-      <InsigniaMedalla id={item.id} conseguida={conseguida} size="sm" />
-
-      <h2 className="mt-3 font-titulo text-base font-semibold leading-snug text-sol">
-        {item.nombre}
-      </h2>
-
-      <p className="mt-2 font-cuerpo text-xs leading-snug text-black/45">
-        {item.descripcion}
-      </p>
-
-      <p
-        className={cn(
-          "mt-2 inline-flex items-center gap-1 font-titulo text-sm font-semibold",
-          conseguida ? "text-mar" : "text-black/50",
-        )}
-        aria-label={`${item.diamantes} ${item.diamantes === 1 ? "diamante" : "diamantes"}`}
-      >
-        <Gem className="h-3.5 w-3.5 stroke-[2]" aria-hidden />+
-        {item.diamantes}
-      </p>
-
-      {!conseguida && progreso ? (
-        <div className="mt-3 w-full px-1">
-          <div
-            className="h-2 overflow-hidden rounded-full bg-black/[0.06]"
-            role="progressbar"
-            aria-valuenow={progreso.actual}
-            aria-valuemin={0}
-            aria-valuemax={progreso.meta}
-            aria-label={`${progreso.actual} de ${progreso.meta}`}
-          >
-            <div
-              className="h-full rounded-full bg-mar transition-[width] duration-500"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-          <p className="mt-1 font-cuerpo text-[11px] text-black/40">
-            {progreso.actual}/{progreso.meta}
+      {earned.length > 0 ? (
+        <Aparecer delay={0.14} className="mt-8">
+          <h2 className="font-titulo text-lg font-semibold text-primary sm:text-xl">
+            Conseguidas
+          </h2>
+          <p className="mt-0.5 font-cuerpo text-sm text-readable">
+            ¡Tus premios!
           </p>
-        </div>
+          <div className="mt-3 flex flex-col gap-5">
+            {GRUPOS_MEDALLAS.map((g) => {
+              const delGrupo = earned.filter((m) =>
+                g.medallaIds.includes(m.id),
+              );
+              return (
+                <MedalGroup
+                  key={`earned-${g.id}`}
+                  emoji={g.emoji}
+                  titulo={g.titulo}
+                  items={delGrupo}
+                  mode="earned"
+                />
+              );
+            })}
+          </div>
+        </Aparecer>
       ) : null}
-    </article>
+
+      {hayBloqueadas ? (
+        <Aparecer delay={0.18} className="mt-8">
+          <h2 className="font-titulo text-lg font-semibold text-primary sm:text-xl">
+            Por descubrir
+          </h2>
+          <p className="mt-0.5 font-cuerpo text-sm text-readable">
+            Retos que todavía te esperan
+          </p>
+          <div className="mt-3 flex flex-col gap-5 opacity-95">
+            {lockedByGroup.map((g) => (
+              <MedalGroup
+                key={`locked-${g.id}`}
+                emoji={g.emoji}
+                titulo={g.titulo}
+                items={g.locked}
+                mode="locked"
+              />
+            ))}
+          </div>
+        </Aparecer>
+      ) : null}
+
+      {conseguidas >= total && total > 0 ? (
+        <Aparecer delay={0.2} className="mt-8 text-center">
+          <p className="font-titulo text-lg font-semibold text-mar">
+            ¡Has conseguido todas las medallas!
+          </p>
+        </Aparecer>
+      ) : null}
+    </Pantalla>
   );
 }

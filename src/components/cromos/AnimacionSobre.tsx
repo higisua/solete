@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Gem } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Boton } from "@/components/ui";
 import { Confeti } from "@/components/juego/Confeti";
+import { Solete } from "@/components/solete";
 import { CromoCara, EtiquetaRareza } from "@/components/cromos/CromoCara";
 import { COLORES_RAREZA } from "@/lib/juego/cromos-estilo";
 import type { CromoObtenido, ItemSobre } from "@/lib/juego/cromos";
@@ -33,7 +33,11 @@ export function AnimacionSobre({
   const [fase, setFase] = useState<Fase>(reducir ? "revelacion" : "temblor");
   const multi = items.length > 1;
   const primer = items[0]!;
-  const hayEspecial = items.some((i) => !i.repetido && i.cromo.rareza === "especial");
+  const hayEspecial = items.some(
+    (i) =>
+      !i.repetido &&
+      (i.cromo.rareza === "especial" || i.cromo.rareza === "legendary"),
+  );
   const hayRaro = items.some(
     (i) => !i.repetido && (i.cromo.rareza === "raro" || i.cromo.rareza === "especial"),
   );
@@ -103,7 +107,8 @@ export function AnimacionSobre({
               initial={reducir ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <p className="inline-flex flex-wrap items-center justify-center gap-1.5 font-titulo text-2xl font-semibold text-sol sm:text-3xl">
+              <Solete mood="gift" size="md" priority alt="" />
+              <p className="mt-3 inline-flex flex-wrap items-center justify-center gap-1.5 font-titulo text-2xl font-semibold text-sol sm:text-3xl">
                 <span>{mensaje}</span>
                 {(multi ? devolucionTotal > 0 : primer.repetido) ? (
                   <span className="inline-flex items-center gap-1 text-mar">
@@ -152,7 +157,8 @@ export function AnimacionSobre({
                 <>
                   <div className="relative mt-8 flex w-[11.5rem] items-center justify-center sm:w-52">
                     {!primer.repetido &&
-                    primer.cromo.rareza === "especial" &&
+                    (primer.cromo.rareza === "especial" ||
+                      primer.cromo.rareza === "legendary") &&
                     !reducir ? (
                       <motion.div
                         aria-hidden
@@ -285,14 +291,7 @@ function SobreVisual({
         }}
       />
       <div className="absolute inset-x-0 bottom-6 flex justify-center">
-        <Image
-          src="/assets/logos/solete_solo_logo.png"
-          alt=""
-          width={48}
-          height={48}
-          className="h-12 w-12 object-contain opacity-90 drop-shadow-sm"
-          aria-hidden
-        />
+        <Solete mood="gift" size="xs" animate={false} alt="" />
       </div>
       {grande ? (
         <span className="absolute bottom-2 left-1/2 -translate-x-1/2 font-titulo text-xs font-bold tracking-wide text-white/90">

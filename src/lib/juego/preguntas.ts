@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Pregunta, Tema } from "@/types/database";
+import type { Asignatura, CursoContenido, Pregunta, Tema } from "@/types/database";
 import { MISION_OBJETIVO, repartirCupos } from "@/lib/juego/reglas";
 import { getAsignaturasPorCurso } from "@/lib/juego/nino";
 
@@ -18,12 +18,40 @@ function parseOpciones(raw: unknown): string[] | null {
   return null;
 }
 
+/** Normaliza nombre de asignatura/tema para emparejar entre cursos. */
+function claveNombre(nombre: string): string {
+  return nombre
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Curso del contenido usado en práctica extrema:
+ * 1º → preguntas de 2º · 2º → preguntas de 3º.
+ */
+export function cursoContenidoExtremo(
+  cursoNino: "1" | "2",
+): Exclude<CursoContenido, "1"> {
+  return cursoNino === "1" ? "2" : "3";
+}
+
 function mapPreguntas(data: unknown[] | null): Pregunta[] {
   return (data ?? []).map((p) => {
     const row = p as Pregunta & { opciones: unknown };
+    let opciones = parseOpciones(row.opciones);
+    // Baraja opciones de multiple choice (la respuesta sigue siendo el texto).
+    if (
+      row.tipo === "multiple_choice" &&
+      opciones &&
+      opciones.length >= 2
+    ) {
+      opciones = shuffle(opciones);
+    }
     return {
       ...row,
-      opciones: parseOpciones(row.opciones),
+      opciones,
     };
   });
 }
@@ -79,8 +107,111 @@ export async function getPreguntasPorIds(ids: string[]): Promise<Pregunta[]> {
 }
 
 /**
+ * Pool de práctica extrema: contenido del curso siguiente
+ * (misma asignatura por nombre; tema opcional emparejado por nombre).
+ * No usa temas_activos del curso origen (son IDs distintos).
+ * Sin match o sin preguntas → [].
+ */
+async function getPoolPracticaExtrema(
+  cursoNino: "1" | "2",
+  asignaturaId: string,
+  temaId?: string | null,
+): Promise<Pregunta[]> {
+  const supabase = await createClient();
+  const cursoDestino = cursoContenidoExtremo(cursoNino);
+
+  const { data: asigOrigen } = await supabase
+    .from("asignaturas")
+    .select("id, nombre")
+    .eq("id", asignaturaId)
+    .maybeSingle();
+
+  if (!asigOrigen) return [];
+
+  const destinos = await getAsignaturasPorCurso(cursoDestino);
+  const asigDestino = destinos.find(
+    (a) => claveNombre(a.nombre) === claveNombre(String(asigOrigen.nombre)),
+  );
+  if (!asigDestino) return [];
+
+  const { data: temasDest } = await supabase
+    .from("temas")
+    .select("*")
+    .eq("asignatura_id", asigDestino.id)
+    .order("orden", { ascending: true });
+
+  if (!temasDest?.length) return [];
+
+  let temasUsar = temasDest as Tema[];
+
+  if (temaId) {
+    // temaId puede ser del curso origen (UI antigua) o del destino (UI extrema).
+    const { data: temaRef } = await supabase
+      .from("temas")
+      .select("id, nombre, asignatura_id")
+      .eq("id", temaId)
+      .maybeSingle();
+
+    if (temaRef?.asignatura_id === asigDestino.id) {
+      temasUsar = temasUsar.filter((t) => t.id === temaId);
+    } else if (temaRef?.nombre) {
+      const clave = claveNombre(String(temaRef.nombre));
+      const emparejados = temasUsar.filter(
+        (t) => claveNombre(t.nombre) === clave,
+      );
+      if (emparejados.length > 0) temasUsar = emparejados;
+      else return []; // tema pedido sin equivalente en el curso siguiente
+    } else {
+      return [];
+    }
+  }
+
+  return getPreguntasDeTemas(temasUsar.map((t) => t.id));
+}
+
+/** Asignatura destino del curso siguiente con el mismo nombre, si existe. */
+export async function getAsignaturaContenidoExtremo(
+  cursoNino: "1" | "2",
+  asignaturaId: string,
+): Promise<Asignatura | null> {
+  const supabase = await createClient();
+  const { data: asigOrigen } = await supabase
+    .from("asignaturas")
+    .select("nombre")
+    .eq("id", asignaturaId)
+    .maybeSingle();
+  if (!asigOrigen) return null;
+
+  const destinos = await getAsignaturasPorCurso(
+    cursoContenidoExtremo(cursoNino),
+  );
+  return (
+    destinos.find(
+      (a) => claveNombre(a.nombre) === claveNombre(String(asigOrigen.nombre)),
+    ) ?? null
+  );
+}
+
+/** Temas del curso siguiente para una asignatura (práctica extrema). */
+export async function getTemasContenidoExtremo(
+  cursoNino: "1" | "2",
+  asignaturaId: string,
+): Promise<Tema[]> {
+  const dest = await getAsignaturaContenidoExtremo(cursoNino, asignaturaId);
+  if (!dest) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("temas")
+    .select("*")
+    .eq("asignatura_id", dest.id)
+    .order("orden", { ascending: true });
+  return (data as Tema[]) ?? [];
+}
+
+/**
  * Práctica: pool de una asignatura (opcionalmente un tema).
- * En nivel extremo prioriza preguntas difíciles (dificultad 3, luego ≥2).
+ * Extremo: SOLO preguntas del curso siguiente (1→2, 2→3).
+ * Sin contenido superior → [] (sin fallback al mismo curso).
  */
 export async function getPreguntasParaPractica(
   ninoId: string,
@@ -88,20 +219,31 @@ export async function getPreguntasParaPractica(
   temaId?: string | null,
   nivel: "normal" | "extremo" = "normal",
 ): Promise<Pregunta[]> {
-  const temas = await getTemasActivosDeAsignatura(ninoId, asignaturaId);
-  const filtrados = temaId ? temas.filter((t) => t.id === temaId) : temas;
-  if (filtrados.length === 0) return [];
-
-  const pool = await getPreguntasDeTemas(filtrados.map((t) => t.id));
   if (nivel !== "extremo") {
+    const temas = await getTemasActivosDeAsignatura(ninoId, asignaturaId);
+    const filtrados = temaId ? temas.filter((t) => t.id === temaId) : temas;
+    if (filtrados.length === 0) return [];
+    const pool = await getPreguntasDeTemas(filtrados.map((t) => t.id));
     return shuffle(pool);
   }
 
-  const d3 = pool.filter((p) => p.dificultad >= 3);
-  if (d3.length >= 5) return shuffle(d3);
-  const d2 = pool.filter((p) => p.dificultad >= 2);
-  if (d2.length > 0) return shuffle(d2);
-  return shuffle(pool);
+  const supabase = await createClient();
+  const { data: nino } = await supabase
+    .from("ninos")
+    .select("curso")
+    .eq("id", ninoId)
+    .maybeSingle();
+
+  const cursoNino =
+    nino?.curso === "1" || nino?.curso === "2" ? nino.curso : null;
+  if (!cursoNino) return [];
+
+  const poolSuperior = await getPoolPracticaExtrema(
+    cursoNino,
+    asignaturaId,
+    temaId,
+  );
+  return shuffle(poolSuperior);
 }
 
 /**

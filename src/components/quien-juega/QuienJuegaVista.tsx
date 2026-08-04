@@ -8,6 +8,7 @@ import {
   ListaAparecer,
   Pantalla,
 } from "@/components/ui";
+import { Solete } from "@/components/solete";
 import { publicAssetClient } from "@/lib/public-asset-client";
 
 export type NinoSelectorItem = {
@@ -28,8 +29,9 @@ export function QuienJuegaVista({ ninos }: Props) {
   const reducir = useReducedMotion();
 
   return (
-    <Pantalla className="fondo-halo-sol flex flex-col pb-10 pt-8">
+    <Pantalla className="fondo-halo-sol flex flex-col pb-10 pt-8" sinAtmosfera>
       <Aparecer className="flex flex-col items-center text-center">
+        <Solete mood="wave" size="lg" priority alt="" />
         <Image
           src={publicAssetClient("assets/logos/solete_texto.png")}
           alt="Solete"
@@ -37,13 +39,13 @@ export function QuienJuegaVista({ ninos }: Props) {
           height={64}
           unoptimized
           priority
-          className="h-12 w-auto object-contain sm:h-14"
+          className="mt-3 h-10 w-auto object-contain sm:h-12"
         />
-        <h1 className="mt-6 font-titulo text-3xl font-semibold leading-tight text-sol sm:text-4xl">
+        <h1 className="mt-5 font-titulo text-3xl font-semibold leading-tight text-primary sm:text-4xl">
           ¿Quién juega hoy?
         </h1>
-        <p className="mt-2 max-w-[18rem] font-cuerpo text-base text-black/55 sm:text-lg">
-          Toca tu avatar para empezar
+        <p className="mt-2 max-w-[18rem] font-cuerpo text-base text-readable sm:text-lg">
+          Toca tu foto para empezar
         </p>
       </Aparecer>
 
@@ -56,11 +58,11 @@ export function QuienJuegaVista({ ninos }: Props) {
             <form action={nino.action}>
               <motion.button
                 type="submit"
-                whileTap={reducir ? undefined : { scale: 0.97 }}
-                transition={{ type: "spring", stiffness: 420, damping: 28 }}
-                className="flex min-h-[6.5rem] w-full items-center gap-4 rounded-[24px] bg-white px-4 py-4 text-left shadow-[0_10px_28px_-14px_rgba(216,90,48,0.3)] transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sol"
+                whileTap={reducir ? undefined : { scale: 0.98 }}
+                transition={{ duration: 0.12 }}
+                className="flex min-h-[7rem] w-full items-center gap-4 rounded-card bg-surface px-4 py-4 text-left shadow-elevated transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
               >
-                <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full bg-[#FFF8ED] shadow-[0_6px_16px_-6px_rgba(216,90,48,0.35)] ring-2 ring-white sm:h-24 sm:w-24">
+                <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full bg-surface-muted shadow-card ring-2 ring-white sm:h-24 sm:w-24">
                   {nino.avatarSrc ? (
                     <Image
                       src={nino.avatarSrc}
@@ -71,12 +73,12 @@ export function QuienJuegaVista({ ninos }: Props) {
                       className="h-full w-full object-contain p-1"
                     />
                   ) : (
-                    <span className="flex h-full w-full items-center justify-center font-titulo text-3xl font-semibold text-sol">
+                    <span className="flex h-full w-full items-center justify-center font-titulo text-3xl font-semibold text-primary">
                       {nino.iniciales}
                     </span>
                   )}
                 </div>
-                <span className="min-w-0 flex-1 font-titulo text-2xl font-semibold leading-snug text-sol sm:text-3xl">
+                <span className="min-w-0 flex-1 font-titulo text-2xl font-semibold leading-snug text-primary sm:text-3xl">
                   {nino.nombre}
                 </span>
               </motion.button>

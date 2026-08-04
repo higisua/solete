@@ -7,6 +7,7 @@ import {
   cromoPorId,
   cromosPorRareza,
   devolucionPorRepetido,
+  esRarezaVisible,
   precioPorRareza,
   type CromoDef,
   type CromoId,
@@ -80,6 +81,7 @@ export type ColeccionVista = {
   conseguidos: number;
   total: number;
   diamantes: number;
+  legendarios: import("@/lib/juego/legendarios-eval").LegendariosVista;
 };
 
 function aPublico(def: CromoDef): CromoObtenido {
@@ -120,16 +122,22 @@ function elegirCromoDeRareza(
   rareza: RarezaCromo,
   excluir: Set<string> = new Set(),
 ): CromoDef {
-  const pool = cromosPorRareza(rareza).filter((c) => !excluir.has(c.id));
+  // Legendarios nunca salen en sobres (ni como fallback).
+  const pool = cromosPorRareza(rareza).filter(
+    (c) => !excluir.has(c.id) && esRarezaVisible(c.rareza),
+  );
   if (pool.length > 0) {
     return pool[randomInt(pool.length)]!;
   }
   // Si esa rareza está agotada (todos excluidos), cualquier del catálogo libre
-  const libres = CATALOGO_CROMOS.filter((c) => !excluir.has(c.id));
+  const libres = CATALOGO_CROMOS.filter(
+    (c) => !excluir.has(c.id) && esRarezaVisible(c.rareza),
+  );
   if (libres.length > 0) {
     return libres[randomInt(libres.length)]!;
   }
-  return CATALOGO_CROMOS[randomInt(CATALOGO_CROMOS.length)]!;
+  const visibles = CATALOGO_CROMOS.filter((c) => esRarezaVisible(c.rareza));
+  return visibles[randomInt(visibles.length)]!;
 }
 
 /**
@@ -270,6 +278,9 @@ export async function comprarCromo(
   if (!def) {
     return { ok: false, error: "Ese cromo no existe." };
   }
+  if (def.rareza === "legendary") {
+    return { ok: false, error: "Ese cromo no se puede comprar." };
+  }
 
   const precio = precioPorRareza(def.rareza);
   const poseidos = await idsPoseidos(ninoId);
@@ -300,6 +311,8 @@ export async function comprarCromo(
 
   const { evaluarMedallasTrasCromo } = await import("@/lib/juego/medallas");
   const evalMed = await evaluarMedallasTrasCromo(ninoId);
+  const { evaluarLegendarios } = await import("@/lib/juego/legendarios-eval");
+  await evaluarLegendarios(ninoId);
 
   return {
     ok: true,
@@ -343,6 +356,8 @@ export async function abrirSobre(ninoId: string): Promise<ResultadoSobre> {
     const { evaluarMedallasTrasCromo } = await import("@/lib/juego/medallas");
     const evalMed = await evaluarMedallasTrasCromo(ninoId);
     saldo += evalMed.diamantesExtra;
+    const { evaluarLegendarios } = await import("@/lib/juego/legendarios-eval");
+    await evaluarLegendarios(ninoId);
   }
 
   return {
@@ -395,6 +410,8 @@ export async function abrirSobreGrande(
     const { evaluarMedallasTrasCromo } = await import("@/lib/juego/medallas");
     const evalMed = await evaluarMedallasTrasCromo(ninoId);
     saldo += evalMed.diamantesExtra;
+    const { evaluarLegendarios } = await import("@/lib/juego/legendarios-eval");
+    await evaluarLegendarios(ninoId);
   }
 
   return {
@@ -434,8 +451,9 @@ export async function getColeccionVista(
   const tematicas: TematicaAlbum[] = [...TEMATICAS_CROMOS]
     .sort((a, b) => a.orden - b.orden)
     .map((t) => {
+      // Solo rarezas visibles: legendary tipado pero fuera del álbum hasta su fase.
       const cromos: CromoAlbumItem[] = CATALOGO_CROMOS.filter(
-        (c) => c.tematicaId === t.id,
+        (c) => c.tematicaId === t.id && esRarezaVisible(c.rareza),
       )
         .sort((a, b) => a.orden - b.orden)
         .map((c) => ({
@@ -455,11 +473,16 @@ export async function getColeccionVista(
     });
 
   const conseguidos = tematicas.reduce((s, t) => s + t.conseguidos, 0);
+  const totalVisible = tematicas.reduce((s, t) => s + t.total, 0);
+
+  const { getLegendariosVista } = await import("@/lib/juego/legendarios-eval");
+  const legendarios = await getLegendariosVista(ninoId);
 
   return {
     tematicas,
     conseguidos,
-    total: CATALOGO_CROMOS.length,
+    total: totalVisible,
     diamantes,
+    legendarios,
   };
 }

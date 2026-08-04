@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Boton, Pantalla } from "@/components/ui";
 import { MotorPreguntas } from "@/components/juego/MotorPreguntas";
 import { getNinoActivoValidado } from "@/lib/juego";
 import { obtenerMisionDiariaDeHoy } from "@/lib/juego/mision-diaria";
@@ -15,42 +15,40 @@ export default async function MisionDiariaPage() {
 
   if (estado.estado === "completada") {
     return (
-      <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10 text-center">
-        <h1 className="font-titulo text-3xl font-semibold text-sol">
+      <Pantalla centrar className="fondo-halo-sol text-center" sinAtmosfera>
+        <h1 className="font-titulo text-3xl font-semibold text-primary">
           ¡Misión de hoy hecha!
         </h1>
-        <p className="mt-3 text-lg text-black/65">
+        <p className="mt-3 font-cuerpo text-lg text-readable">
           {nino.nombre} ya completó la misión de hoy (
           {estado.mision.aciertos}/{estado.mision.total}, {estado.mision.estrellas}{" "}
           ★). Vuelve mañana para una nueva.
         </p>
-        <Link
-          href="/mundo"
-          className="mt-8 inline-flex min-h-12 items-center justify-center rounded-2xl bg-mar px-5 font-titulo text-lg font-semibold text-white"
-        >
-          Volver al mundo
-        </Link>
-      </main>
+        <div className="mt-8">
+          <Boton href="/mundo" variant="secundario">
+            Volver al mundo
+          </Boton>
+        </div>
+      </Pantalla>
     );
   }
 
   if (estado.estado === "sin_preguntas") {
     return (
-      <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10 text-center">
-        <h1 className="font-titulo text-3xl font-semibold text-sol">
+      <Pantalla centrar className="fondo-halo-sol text-center" sinAtmosfera>
+        <h1 className="font-titulo text-3xl font-semibold text-primary">
           Aún no hay preguntas
         </h1>
-        <p className="mt-3 text-lg text-black/65">
+        <p className="mt-3 font-cuerpo text-lg text-readable">
           No hay preguntas activas para la misión de {nino.nombre}. Pide a un
           adulto que active temas.
         </p>
-        <Link
-          href="/mundo"
-          className="mt-8 inline-flex min-h-12 items-center justify-center rounded-2xl bg-mar px-5 font-titulo text-lg font-semibold text-white"
-        >
-          Volver al mundo
-        </Link>
-      </main>
+        <div className="mt-8">
+          <Boton href="/mundo" variant="secundario">
+            Volver al mundo
+          </Boton>
+        </div>
+      </Pantalla>
     );
   }
 

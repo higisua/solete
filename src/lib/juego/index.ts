@@ -10,6 +10,9 @@ export {
   getPreguntasParaPartida,
   getPreguntasParaPractica,
   getPreguntasParaMisionDiaria,
+  getAsignaturaContenidoExtremo,
+  getTemasContenidoExtremo,
+  cursoContenidoExtremo,
 } from "@/lib/juego/preguntas";
 
 export { obtenerMisionDiariaDeHoy, getResumenMisionHoy } from "@/lib/juego/mision-diaria";
@@ -56,11 +59,30 @@ export {
   precioPorRareza,
   devolucionPorRepetido,
   cromoPorId,
+  esRarezaVisible,
+  RAREZAS_VISIBLES,
   type RarezaCromo,
+  type RarezaVisible,
   type TematicaId,
   type CromoDef,
   type TematicaDef,
 } from "@/lib/juego/cromos-catalogo";
+export {
+  CATALOGO_LEGENDARIOS,
+  legendarioPorId,
+  esIdLegendario,
+  imagenLegendario,
+  type LegendaryDef,
+  type LegendaryUnlockType,
+  type LegendaryId,
+} from "@/lib/juego/legendaries";
+export {
+  evaluarLegendarios,
+  getLegendariosVista,
+  type LegendarioDesbloqueado,
+  type LegendariosVista,
+  type LegendarioProgresoItem,
+} from "@/lib/juego/legendarios-eval";
 export {
   comprarCromo,
   abrirSobre,
@@ -87,3 +109,11 @@ export {
   temaPredominante,
   repartirCupos,
 } from "@/lib/juego/reglas";
+
+export {
+  MISSION_STAGES,
+  planificarEtapas,
+  posicionEnEtapa,
+  type MissionStageDef,
+  type EtapaPlan,
+} from "@/lib/juego/mission-stages";

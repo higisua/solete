@@ -20,11 +20,14 @@ export type Nino = {
   diamantes?: number;
 };
 
+/** Curso del contenido pedagógico (incluye 3º para práctica extrema). */
+export type CursoContenido = "1" | "2" | "3";
+
 export type Asignatura = {
   id: string;
   nombre: string;
   icono: string;
-  curso: "1" | "2";
+  curso: CursoContenido;
   creado_en: string;
 };
 

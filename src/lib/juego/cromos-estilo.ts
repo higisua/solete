@@ -19,4 +19,10 @@ export const COLORES_RAREZA: Record<
     label: "Especial",
     confeti: ["#E09A2E", "#F0C05A", "#C87A12", "#FFE6B0", "#FFF3DC"],
   },
+  /** Preparado; no expuesto en UI hasta la fase de Legendarios. */
+  legendary: {
+    hex: "#9B6DFF",
+    label: "Legendario",
+    confeti: ["#9B6DFF", "#C4A8FF", "#7A4FE0", "#EDE4FF", "#FAC775"],
+  },
 };

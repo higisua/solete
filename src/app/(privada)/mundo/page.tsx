@@ -44,6 +44,7 @@ export default async function MundoPage() {
       iniciales={nino.nombre.slice(0, 1)}
       estrellas={totales.estrellas}
       diamantes={totales.puntos}
+      rachaDias={nino.racha_dias ?? 0}
       misionCompletadaHoy={misionHoy.completada}
       estrellasHoy={misionHoy.estrellasHoy}
       mostrarCambiarJugador={hermanos.length > 1}

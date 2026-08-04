@@ -3,8 +3,11 @@ import { redirect } from "next/navigation";
 import { Flame, Gem, Sparkles } from "lucide-react";
 import {
   getAsignaturasPorCurso,
+  getAsignaturaContenidoExtremo,
   getNinoActivoValidado,
   getTemasActivosDeAsignatura,
+  getTemasContenidoExtremo,
+  getPreguntasParaPractica,
 } from "@/lib/juego";
 import {
   DIAMANTES_PRACTICA_DIARIA,
@@ -15,7 +18,14 @@ import {
   type NivelPractica,
 } from "@/lib/juego/economia";
 import { iconoAsignatura } from "@/lib/iconos";
-import { Aparecer, Pantalla, Tarjeta } from "@/components/ui";
+import {
+  Aparecer,
+  Boton,
+  CabeceraNino,
+  EstadoVacio,
+  Pantalla,
+  Tarjeta,
+} from "@/components/ui";
 
 type Props = {
   searchParams: Promise<{ nivel?: string }>;
@@ -36,41 +46,39 @@ export default async function PracticaPage({ searchParams }: Props) {
 
   if (!nivel) {
     return (
-      <Pantalla className="fondo-halo-sol">
+      <Pantalla className="fondo-halo-sol" sinAtmosfera>
         <Aparecer>
-          <p className="text-center font-cuerpo text-sm text-black/45">
-            {nino.nombre}
-          </p>
-          <h1 className="mt-1 text-center font-titulo text-3xl font-semibold text-sol">
-            Práctica
-          </h1>
-          <p className="mt-2 text-center font-cuerpo text-base text-black/50">
-            Elige cómo quieres practicar
+          <CabeceraNino titulo="Práctica" />
+          <p className="mt-3 text-center font-cuerpo text-base text-readable">
+            Elige cómo practicar
           </p>
         </Aparecer>
 
-        <div className="mt-8 flex flex-col gap-4">
+        <div className="mt-6 flex flex-col gap-3">
           <Aparecer delay={0.06}>
             <Link
               href="/practica?nivel=normal"
-              className="block rounded-[24px] bg-white px-5 py-5 shadow-[0_10px_28px_-14px_rgba(216,90,48,0.28)] transition active:scale-[0.98]"
+              className="block rounded-card bg-surface px-5 py-5 shadow-elevated transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               <div className="flex items-start gap-3">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-limon/60 text-mar">
-                  <Sparkles className="h-6 w-6 stroke-[2]" aria-hidden />
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-limon/60 text-mar">
+                  <Sparkles className="h-7 w-7 stroke-[2]" aria-hidden />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="font-titulo text-xl font-semibold text-sol">
+                  <p className="font-cuerpo text-xs font-medium uppercase tracking-wide text-mar">
+                    Recomendado
+                  </p>
+                  <h2 className="mt-0.5 font-titulo text-2xl font-semibold text-primary">
                     Normal
                   </h2>
-                  <p className="mt-1 font-cuerpo text-sm text-black/55">
+                  <p className="mt-1.5 font-cuerpo text-base leading-snug text-readable">
                     Todas las dificultades.{" "}
                     <span className="inline-flex items-center gap-0.5 font-titulo font-semibold text-mar">
                       +{DIAMANTES_PRACTICA_DIARIA}
                       <Gem className="h-3.5 w-3.5 stroke-[2]" aria-hidden />
                     </span>{" "}
-                    al llegar a {PRACTICA_PREGUNTAS_PARA_DIAMANTE} preguntas
-                    (máx. 1 vez al día).
+                    cada {PRACTICA_PREGUNTAS_PARA_DIAMANTE} preguntas (1 vez al
+                    día).
                   </p>
                 </div>
               </div>
@@ -80,23 +88,23 @@ export default async function PracticaPage({ searchParams }: Props) {
           <Aparecer delay={0.1}>
             <Link
               href="/practica?nivel=extremo"
-              className="block rounded-[24px] bg-[linear-gradient(145deg,#FFF5F0_0%,#FFE0D4_100%)] px-5 py-5 shadow-[0_10px_28px_-14px_rgba(216,90,48,0.35)] ring-1 ring-sol/15 transition active:scale-[0.98]"
+              className="block rounded-card bg-[linear-gradient(145deg,#FFF5F0_0%,#FFE0D4_100%)] px-5 py-4 shadow-card ring-1 ring-sol/15 transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               <div className="flex items-start gap-3">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sol/15 text-sol">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sol/15 text-primary">
                   <Flame className="h-6 w-6 stroke-[2]" aria-hidden />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="font-titulo text-xl font-semibold text-sol">
+                  <h2 className="font-titulo text-xl font-semibold text-primary">
                     Extremo
                   </h2>
-                  <p className="mt-1 font-cuerpo text-sm text-black/55">
-                    Preguntas más difíciles.{" "}
+                  <p className="mt-1 font-cuerpo text-sm leading-snug text-readable">
+                    Solo preguntas del curso siguiente (1º→2º, 2º→3º).{" "}
                     <span className="inline-flex items-center gap-0.5 font-titulo font-semibold text-mar">
                       +{DIAMANTES_PRACTICA_EXTREMA_LOTE}
                       <Gem className="h-3.5 w-3.5 stroke-[2]" aria-hidden />
                     </span>{" "}
-                    cada {PRACTICA_EXTREMA_ACIERTOS_POR_LOTE} aciertos, sin
+                    cada {PRACTICA_EXTREMA_ACIERTOS_POR_LOTE} aciertos · sin
                     límite.
                   </p>
                 </div>
@@ -104,107 +112,126 @@ export default async function PracticaPage({ searchParams }: Props) {
             </Link>
           </Aparecer>
         </div>
-
-        <Aparecer delay={0.18} className="mt-8">
-          <Link
-            href="/mundo"
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border-2 border-sol/25 bg-white font-titulo text-lg font-semibold text-sol"
-          >
-            Volver
-          </Link>
-        </Aparecer>
       </Pantalla>
     );
   }
 
   const asignaturas = await getAsignaturasPorCurso(nino.curso);
-  const conTemas = await Promise.all(
-    asignaturas.map(async (asig) => ({
-      ...asig,
-      temas: await getTemasActivosDeAsignatura(nino.id, asig.id),
-    })),
-  );
+  const cursoNino = nino.curso === "1" || nino.curso === "2" ? nino.curso : null;
+
+  const conTemas = (
+    await Promise.all(
+      asignaturas.map(async (asig) => {
+        if (nivel === "extremo") {
+          if (!cursoNino) return null;
+          const dest = await getAsignaturaContenidoExtremo(cursoNino, asig.id);
+          if (!dest) return null;
+          const sample = await getPreguntasParaPractica(
+            nino.id,
+            asig.id,
+            null,
+            "extremo",
+          );
+          if (sample.length === 0) return null;
+          const temas = await getTemasContenidoExtremo(cursoNino, asig.id);
+          return { ...asig, temas };
+        }
+        return {
+          ...asig,
+          temas: await getTemasActivosDeAsignatura(nino.id, asig.id),
+        };
+      }),
+    )
+  ).filter((a): a is NonNullable<typeof a> => a != null);
 
   const q = `nivel=${nivel}`;
   const tituloNivel = nivel === "extremo" ? "Extremo" : "Normal";
+  const etiquetaCursoSig =
+    nino.curso === "1" ? "2º" : nino.curso === "2" ? "3º" : "siguiente";
 
   return (
-    <Pantalla className="fondo-halo-sol">
+    <Pantalla className="fondo-halo-sol" sinAtmosfera>
       <Aparecer>
-        <p className="text-center font-cuerpo text-sm text-black/45">
+        <CabeceraNino titulo="Práctica" hrefVolver="/practica" labelVolver="Cambiar nivel" />
+        <p className="mt-2 text-center font-cuerpo text-sm text-readable">
           {nino.nombre} · {tituloNivel}
         </p>
-        <h1 className="mt-1 text-center font-titulo text-3xl font-semibold text-sol">
-          Práctica
-        </h1>
-        <p className="mt-2 text-center font-cuerpo text-base text-black/50">
+        <p className="mt-1 text-center font-cuerpo text-base text-readable">
           {nivel === "extremo"
-            ? `Preguntas difíciles · +${DIAMANTES_PRACTICA_EXTREMA_LOTE}💎 cada ${PRACTICA_EXTREMA_ACIERTOS_POR_LOTE} aciertos`
+            ? `Preguntas de ${etiquetaCursoSig} · +${DIAMANTES_PRACTICA_EXTREMA_LOTE}💎 / ${PRACTICA_EXTREMA_ACIERTOS_POR_LOTE} aciertos`
             : `+${DIAMANTES_PRACTICA_DIARIA}💎 con ${PRACTICA_PREGUNTAS_PARA_DIAMANTE} preguntas (1/día)`}
         </p>
       </Aparecer>
 
       {conTemas.length === 0 ? (
         <Aparecer delay={0.08} className="mt-8">
-          <Tarjeta>
-            <p className="text-center font-cuerpo text-black/55">
-              Aún no hay asignaturas para tu curso.
-            </p>
-          </Tarjeta>
+          <EstadoVacio
+            titulo={
+              nivel === "extremo"
+                ? `Sin contenido de ${etiquetaCursoSig}`
+                : "Sin asignaturas"
+            }
+            descripcion={
+              nivel === "extremo"
+                ? `Aún no hay asignaturas de ${etiquetaCursoSig} con el mismo nombre. Pide a un adulto que cargue ese contenido.`
+                : "Aún no hay asignaturas para tu curso."
+            }
+            accion={<Boton href="/mundo" variant="suave">Volver</Boton>}
+          />
         </Aparecer>
       ) : (
-        <ul className="mt-8 flex flex-col gap-5">
+        <ul className="mt-6 flex flex-col gap-4">
           {conTemas.map((asig, i) => (
             <li key={asig.id}>
-              <Aparecer delay={0.06 + i * 0.05}>
-                <Link
-                  href={`/jugar/${asig.id}/libre?${q}`}
-                  className="flex min-h-[72px] items-center gap-4 rounded-[22px] bg-white px-4 py-3 shadow-[0_8px_22px_-12px_rgba(216,90,48,0.28)] transition active:scale-[0.98]"
-                >
-                  <span
-                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-limon/50 text-3xl"
-                    aria-hidden
+              <Aparecer delay={0.06 + i * 0.04}>
+                <Tarjeta padding="sm" className="overflow-hidden !p-0">
+                  <Link
+                    href={`/jugar/${asig.id}/libre?${q}`}
+                    className="flex min-h-[4.5rem] items-center gap-4 px-4 py-3 transition hover:bg-surface-muted/50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus active:scale-[0.99]"
                   >
-                    {iconoAsignatura(asig.icono)}
-                  </span>
-                  <span className="font-titulo text-xl font-semibold text-sol">
-                    {asig.nombre}
-                  </span>
-                </Link>
+                    <span
+                      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-limon/50 text-3xl"
+                      aria-hidden
+                    >
+                      {iconoAsignatura(asig.icono)}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-titulo text-xl font-semibold text-primary">
+                        {asig.nombre}
+                      </span>
+                      <span className="mt-0.5 block font-cuerpo text-sm text-readable">
+                        {nivel === "extremo"
+                          ? `Toda la asignatura · ${etiquetaCursoSig}`
+                          : "Toda la asignatura"}
+                      </span>
+                    </span>
+                  </Link>
 
-                {asig.temas.length > 0 ? (
-                  <ul className="mt-2 flex flex-col gap-1.5 pl-2">
-                    {asig.temas.map((tema) => (
-                      <li key={tema.id}>
-                        <Link
-                          href={`/jugar/${asig.id}/libre?tema=${tema.id}&${q}`}
-                          className="flex min-h-11 items-center rounded-2xl px-3 font-cuerpo text-base text-mar underline-offset-2 hover:underline"
-                        >
-                          {tema.nombre}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
+                  {asig.temas.length > 0 ? (
+                    <ul className="border-t border-border/60 px-2 py-2">
+                      {asig.temas.map((tema) => (
+                        <li key={tema.id}>
+                          <Link
+                            href={`/jugar/${asig.id}/libre?tema=${tema.id}&${q}`}
+                            className="flex min-h-12 items-center rounded-xl px-3 font-cuerpo text-base text-secondary transition hover:bg-mar/8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                          >
+                            {tema.nombre}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </Tarjeta>
               </Aparecer>
             </li>
           ))}
         </ul>
       )}
 
-      <Aparecer delay={0.2} className="mt-8 flex flex-col gap-3">
-        <Link
-          href="/practica"
-          className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border-2 border-sol/25 bg-white font-titulo text-lg font-semibold text-sol"
-        >
-          Cambiar nivel
-        </Link>
-        <Link
-          href="/mundo"
-          className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border-2 border-transparent font-titulo text-lg font-semibold text-black/45"
-        >
+      <Aparecer delay={0.2} className="mt-8">
+        <Boton href="/mundo" variant="suave">
           Volver al mundo
-        </Link>
+        </Boton>
       </Aparecer>
     </Pantalla>
   );

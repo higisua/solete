@@ -38,6 +38,7 @@ export default async function NuevaAsignaturaPage() {
             >
               <option value="1">1º primaria</option>
               <option value="2">2º primaria</option>
+              <option value="3">3º primaria (extrema de 2º)</option>
             </select>
           </label>
         </SuperadminForm>

@@ -2,7 +2,7 @@ import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "rea
 import { cn } from "@/lib/cn";
 
 const inputBase =
-  "min-h-12 w-full rounded-2xl border-2 border-sol-claro/55 bg-white px-4 font-cuerpo text-base text-black outline-none transition placeholder:text-black/35 focus:border-sol focus:shadow-[0_0_0_3px_rgba(216,90,48,0.12)]";
+  "min-h-12 w-full rounded-2xl border-2 border-border bg-surface px-4 font-cuerpo text-base text-text-primary outline-none transition placeholder:text-text-secondary/55 focus:border-primary focus:shadow-[0_0_0_3px_rgba(216,90,48,0.14)] focus-visible:outline-none";
 
 type CampoProps = InputHTMLAttributes<HTMLInputElement> & {
   label: string;
@@ -10,7 +10,7 @@ type CampoProps = InputHTMLAttributes<HTMLInputElement> & {
   error?: string;
 };
 
-/** Campo de formulario amable: etiqueta clara, alto táctil, focus visible. */
+/** Campo de formulario: etiqueta clara, alto táctil, focus visible. */
 export function Campo({
   label,
   hint,
@@ -23,21 +23,21 @@ export function Campo({
 
   return (
     <label className="block w-full" htmlFor={fieldId}>
-      <span className="mb-1.5 block font-titulo text-base font-semibold text-sol">
+      <span className="mb-1.5 block font-titulo text-base font-semibold text-primary">
         {label}
       </span>
       <input
         id={fieldId}
-        className={cn(inputBase, error && "border-fallo focus:border-fallo", className)}
+        className={cn(inputBase, error && "border-error focus:border-error", className)}
         aria-invalid={error ? true : undefined}
         {...props}
       />
       {error ? (
-        <span className="mt-1.5 block text-sm text-[#8a3b28]" role="alert">
+        <span className="mt-1.5 block text-sm text-error" role="alert">
           {error}
         </span>
       ) : hint ? (
-        <span className="mt-1.5 block text-sm text-black/50">{hint}</span>
+        <span className="mt-1.5 block text-sm text-readable">{hint}</span>
       ) : null}
     </label>
   );
@@ -52,7 +52,7 @@ export function CampoArea({ label, hint, id, className, ...props }: AreaProps) {
   const fieldId = id ?? props.name;
   return (
     <label className="block w-full" htmlFor={fieldId}>
-      <span className="mb-1.5 block font-titulo text-base font-semibold text-sol">
+      <span className="mb-1.5 block font-titulo text-base font-semibold text-primary">
         {label}
       </span>
       <textarea
@@ -60,7 +60,7 @@ export function CampoArea({ label, hint, id, className, ...props }: AreaProps) {
         className={cn(inputBase, "min-h-28 py-3", className)}
         {...props}
       />
-      {hint ? <span className="mt-1.5 block text-sm text-black/50">{hint}</span> : null}
+      {hint ? <span className="mt-1.5 block text-sm text-readable">{hint}</span> : null}
     </label>
   );
 }

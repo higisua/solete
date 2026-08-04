@@ -77,13 +77,13 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE p.proname = 'es_superadmin' AND n.nspname = 'public'
+    WHERE p.proname = 'es_superadmin' AND n.nspname = 'private'
   ) THEN
     EXECUTE $pol$
       CREATE POLICY "medallas_nino_select_superadmin"
         ON public.medallas_nino FOR SELECT
         TO authenticated
-        USING (public.es_superadmin())
+        USING (private.es_superadmin())
     $pol$;
   END IF;
 EXCEPTION

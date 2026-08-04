@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Image from "next/image";
 import { unstable_rethrow } from "next/navigation";
 import { Delete } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { verificarPinZonaPadres } from "@/app/actions/zona-padres";
 import { Aparecer, Pantalla } from "@/components/ui";
-import { publicAssetClient } from "@/lib/public-asset-client";
+import { Solete } from "@/components/solete";
 import { cn } from "@/lib/cn";
 
 const TECLAS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "borrar"] as const;
@@ -56,20 +55,11 @@ export function PinGate() {
   return (
     <Pantalla centrar className="fondo-halo-sol">
       <Aparecer className="flex flex-col items-center text-center">
-        <Image
-          src={publicAssetClient("assets/logos/solete_solo_logo.png")}
-          alt=""
-          width={72}
-          height={72}
-          unoptimized
-          priority
-          className="h-16 w-16 object-contain drop-shadow-sm"
-          aria-hidden
-        />
+        <Solete mood="thinking" size="md" priority alt="" />
         <h1 className="mt-4 font-titulo text-3xl font-semibold text-sol">
           Zona padres
         </h1>
-        <p className="mt-2 max-w-[16rem] font-cuerpo text-base text-black/55">
+        <p className="mt-2 max-w-[16rem] font-cuerpo text-base text-readable">
           Introduce el PIN de 4 dígitos
         </p>
       </Aparecer>
