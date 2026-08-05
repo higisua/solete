@@ -12,6 +12,7 @@ export {
   getPreguntasParaMisionDiaria,
   getAsignaturaContenidoExtremo,
   getTemasContenidoExtremo,
+  listarAsignaturasParaPracticaExtrema,
   cursoContenidoExtremo,
 } from "@/lib/juego/preguntas";
 
@@ -27,6 +28,7 @@ export {
   evaluarMedallasTrasMision,
   evaluarMedallasTrasPractica,
   evaluarMedallasTrasCromo,
+  sincronizarMedallasPendientes,
   otorgarMedallaBienvenida,
   type MedallaDesbloqueada,
 } from "@/lib/juego/medallas";
@@ -42,6 +44,7 @@ export {
 } from "@/lib/juego/economia";
 export {
   registrarPracticaDelDia,
+  reconciliarPremioPracticaHoy,
   otorgarDiamantesPracticaExtrema,
   diamantesPracticaExtrema,
   totalPreguntasPractica,

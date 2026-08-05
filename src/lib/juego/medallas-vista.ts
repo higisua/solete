@@ -101,7 +101,12 @@ async function cargarStats(ninoId: string): Promise<Stats> {
       .filter((f) => f >= desde && f <= hasta),
   ).size;
 
-  const poseidos = new Set((cromosFilas ?? []).map((r) => String(r.cromo_id)));
+  const poseidos = new Set(
+    (cromosFilas ?? []).map((r) => {
+      const id = String(r.cromo_id);
+      return id === "transportes_glovo" ? "transportes_globo" : id;
+    }),
+  );
   const porTema = {} as Record<TematicaId, { actual: number; meta: number }>;
   for (const tema of TEMATICAS_CROMOS) {
     const delTema = CATALOGO_CROMOS.filter((c) => c.tematicaId === tema.id);

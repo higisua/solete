@@ -161,7 +161,12 @@ async function idsCromosPoseidos(ninoId: string): Promise<Set<string>> {
     .select("cromo_id")
     .eq("nino_id", ninoId);
   if (error || !data) return new Set();
-  return new Set(data.map((r) => String(r.cromo_id)));
+  return new Set(
+    data.map((r) => {
+      const id = String(r.cromo_id);
+      return id === "transportes_glovo" ? "transportes_globo" : id;
+    }),
+  );
 }
 
 function tematicasCompletas(poseidos: Set<string>): TematicaId[] {
@@ -267,6 +272,69 @@ export async function evaluarMedallasTrasPractica(
   }
 
   return { medallas, diamantesExtra };
+}
+
+/**
+ * Otorga medallas cuyo requisito YA se cumple pero no están en medallas_nino
+ * (p.ej. medallas añadidas al catálogo después de que las niñas lo lograran).
+ * Suma diamantes al otorgar. Idempotente.
+ */
+export async function sincronizarMedallasPendientes(
+  ninoId: string,
+): Promise<{ medallas: MedallaDesbloqueada[]; diamantesExtra: number }> {
+  const ya = await idsYaConseguidas(ninoId);
+  const supabase = await createClient();
+  const [
+    statsMis,
+    aciertosTotales,
+    poseidos,
+    practicaMod,
+    { data: nino },
+  ] = await Promise.all([
+    statsMisiones(ninoId),
+    totalAciertosProgreso(ninoId),
+    idsCromosPoseidos(ninoId),
+    import("@/lib/juego/practica-diaria"),
+    supabase.from("ninos").select("racha_dias").eq("id", ninoId).maybeSingle(),
+  ]);
+
+  const [practicaHoy, practicaTotal] = await Promise.all([
+    practicaMod.preguntasPracticaHoy(ninoId),
+    practicaMod.totalPreguntasPractica(ninoId),
+  ]);
+
+  const rachaDias = nino?.racha_dias ?? 0;
+  const candidatas: MedallaId[] = [];
+
+  if (statsMis.totalCompletadas >= 1) candidatas.push("primer_dia");
+  if (rachaDias >= 3) candidatas.push("tres_dias");
+  if (rachaDias >= 7) candidatas.push("semana");
+  if (rachaDias >= 15) candidatas.push("quince_dias");
+  if (statsMis.mesCompleto) candidatas.push("mes_completo");
+  if (statsMis.conTresEstrellas >= 1) candidatas.push("primer_perfecto");
+  if (statsMis.conTresEstrellas >= 5) candidatas.push("estrella_fija");
+  if (statsMis.conTresEstrellas >= 10) candidatas.push("diez_perfectos");
+  if (aciertosTotales >= 100) candidatas.push("aprendiz");
+  if (aciertosTotales >= 250) candidatas.push("aciertos_250");
+  if (aciertosTotales >= 500) candidatas.push("sabelotodo");
+  if (statsMis.totalCompletadas >= 10) candidatas.push("misiones_10");
+  if (statsMis.totalCompletadas >= 25) candidatas.push("misiones_25");
+
+  if (practicaHoy >= PRACTICA_PREGUNTAS_PARA_DIAMANTE) {
+    candidatas.push("practica_10");
+  }
+  if (practicaHoy >= 25) candidatas.push("practica_dia_25");
+  if (practicaTotal >= 50) candidatas.push("practica_50");
+  if (practicaTotal >= 100) candidatas.push("practica_100");
+
+  const nCromos = poseidos.size;
+  if (nCromos >= 1) candidatas.push("primer_cromo");
+  if (nCromos >= 10) candidatas.push("coleccion_10");
+  for (const temaId of tematicasCompletas(poseidos)) {
+    candidatas.push(MEDALLA_POR_TEMATICA[temaId]);
+  }
+
+  return otorgarCandidatas(ninoId, candidatas, ya);
 }
 
 /** Medallas de colección tras comprar/abrir cromos (incluye +3💎 por categoría completa). */

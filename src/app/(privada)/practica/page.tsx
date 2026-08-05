@@ -3,11 +3,9 @@ import { redirect } from "next/navigation";
 import { Flame, Gem, Sparkles } from "lucide-react";
 import {
   getAsignaturasPorCurso,
-  getAsignaturaContenidoExtremo,
   getNinoActivoValidado,
   getTemasActivosDeAsignatura,
-  getTemasContenidoExtremo,
-  getPreguntasParaPractica,
+  listarAsignaturasParaPracticaExtrema,
 } from "@/lib/juego";
 import {
   DIAMANTES_PRACTICA_DIARIA,
@@ -72,7 +70,8 @@ export default async function PracticaPage({ searchParams }: Props) {
                     Normal
                   </h2>
                   <p className="mt-1.5 font-cuerpo text-base leading-snug text-readable">
-                    Todas las dificultades.{" "}
+                    Todas las dificultades. Suma del día (da igual la
+                    asignatura).{" "}
                     <span className="inline-flex items-center gap-0.5 font-titulo font-semibold text-mar">
                       +{DIAMANTES_PRACTICA_DIARIA}
                       <Gem className="h-3.5 w-3.5 stroke-[2]" aria-hidden />
@@ -119,30 +118,17 @@ export default async function PracticaPage({ searchParams }: Props) {
   const asignaturas = await getAsignaturasPorCurso(nino.curso);
   const cursoNino = nino.curso === "1" || nino.curso === "2" ? nino.curso : null;
 
-  const conTemas = (
-    await Promise.all(
-      asignaturas.map(async (asig) => {
-        if (nivel === "extremo") {
-          if (!cursoNino) return null;
-          const dest = await getAsignaturaContenidoExtremo(cursoNino, asig.id);
-          if (!dest) return null;
-          const sample = await getPreguntasParaPractica(
-            nino.id,
-            asig.id,
-            null,
-            "extremo",
-          );
-          if (sample.length === 0) return null;
-          const temas = await getTemasContenidoExtremo(cursoNino, asig.id);
-          return { ...asig, temas };
-        }
-        return {
-          ...asig,
-          temas: await getTemasActivosDeAsignatura(nino.id, asig.id),
-        };
-      }),
-    )
-  ).filter((a): a is NonNullable<typeof a> => a != null);
+  const conTemas =
+    nivel === "extremo"
+      ? cursoNino
+        ? await listarAsignaturasParaPracticaExtrema(cursoNino, asignaturas)
+        : []
+      : await Promise.all(
+          asignaturas.map(async (asig) => ({
+            ...asig,
+            temas: await getTemasActivosDeAsignatura(nino.id, asig.id),
+          })),
+        );
 
   const q = `nivel=${nivel}`;
   const tituloNivel = nivel === "extremo" ? "Extremo" : "Normal";

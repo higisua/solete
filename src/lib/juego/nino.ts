@@ -40,15 +40,24 @@ export async function getAsignaturasPorCurso(
  * Totales para el mundo del niño:
  * - puntos ≈ diamantes acumulados (ninos.diamantes; fallback a progreso.puntos si aún no hay columna)
  * - estrellas = suma de estrellas de misiones_diarias (fallback a progreso.estrellas)
+ *
+ * @param diamantesConocidos si ya los tienes del niño activo, evita un SELECT extra.
  */
-export async function getTotalesProgreso(ninoId: string): Promise<{
+export async function getTotalesProgreso(
+  ninoId: string,
+  diamantesConocidos?: number | null,
+): Promise<{
   puntos: number;
   estrellas: number;
 }> {
   const supabase = await createClient();
 
+  const necesitaDiamantes = typeof diamantesConocidos !== "number";
+
   const [{ data: nino }, { data: misiones }] = await Promise.all([
-    supabase.from("ninos").select("diamantes").eq("id", ninoId).maybeSingle(),
+    necesitaDiamantes
+      ? supabase.from("ninos").select("diamantes").eq("id", ninoId).maybeSingle()
+      : Promise.resolve({ data: null as { diamantes: number } | null }),
     supabase
       .from("misiones_diarias")
       .select("estrellas")
@@ -56,12 +65,20 @@ export async function getTotalesProgreso(ninoId: string): Promise<{
       .eq("completada", true),
   ]);
 
-  if (nino && typeof nino.diamantes === "number") {
-    const estrellas = (misiones ?? []).reduce(
-      (s, m) => s + (m.estrellas ?? 0),
-      0,
-    );
-    return { puntos: nino.diamantes, estrellas };
+  const diamantes =
+    typeof diamantesConocidos === "number"
+      ? diamantesConocidos
+      : nino && typeof nino.diamantes === "number"
+        ? nino.diamantes
+        : null;
+
+  const estrellas = (misiones ?? []).reduce(
+    (s, m) => s + (m.estrellas ?? 0),
+    0,
+  );
+
+  if (diamantes != null) {
+    return { puntos: diamantes, estrellas };
   }
 
   // Fallback si aún no se ejecutó fase6

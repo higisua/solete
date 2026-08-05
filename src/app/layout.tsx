@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Mali, Quicksand } from "next/font/google";
+import { AssetCacheRegister } from "@/components/AssetCacheRegister";
 import "./globals.css";
 
 const mali = Mali({
@@ -38,7 +39,10 @@ export default function RootLayout({
       lang="es"
       className={`${mali.variable} ${quicksand.variable} h-full antialiased`}
     >
-      <body className="min-h-full font-cuerpo">{children}</body>
+      <body className="min-h-full font-cuerpo">
+        <AssetCacheRegister />
+        {children}
+      </body>
     </html>
   );
 }

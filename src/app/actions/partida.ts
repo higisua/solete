@@ -5,16 +5,17 @@ import { ayerMadridISO, hoyMadridISO } from "@/lib/fecha-madrid";
 import { getNinoDeMiFamilia } from "@/lib/juego";
 import { DIAMANTES_MISION_DIARIA, type NivelPractica } from "@/lib/juego/economia";
 import {
-  evaluarMedallasTrasMision,
-  evaluarMedallasTrasPractica,
-} from "@/lib/juego/medallas";
-import type { MedallaDesbloqueada } from "@/lib/juego/medallas";
-import type { LegendarioDesbloqueado } from "@/lib/juego/legendarios-eval";
-import {
   otorgarDiamantesPracticaExtrema,
   registrarPracticaDelDia,
   totalPreguntasPractica,
 } from "@/lib/juego/practica-diaria";
+import {
+  evaluarMedallasTrasMision,
+  evaluarMedallasTrasPractica,
+  type MedallaDesbloqueada,
+} from "@/lib/juego/medallas";
+import type { LegendarioDesbloqueado } from "@/lib/juego/legendarios-eval";
+import { programarCatchupPremios } from "@/lib/juego/catchup-premios";
 import { calcularEstrellas, puntosPorAciertos } from "@/lib/juego/reglas";
 import type { ActionResult, ModoJuego } from "@/types/database";
 
@@ -302,7 +303,7 @@ export async function finalizarPartida(
     }
   }
 
-  // 4) Práctica: normal (tope diario) o extrema (lotes de aciertos)
+  // 4) Práctica: normal (tope diario acumulado entre asignaturas) o extrema
   if (esPractica && payload.total > 0) {
     const nivel: NivelPractica =
       payload.nivelPractica === "extremo" ? "extremo" : "normal";
@@ -346,6 +347,12 @@ export async function finalizarPartida(
       }
     }
   }
+
+  // Catch-up de medallas/premios fuera del hang de resultados
+  programarCatchupPremios(
+    payload.ninoId,
+    diamantesTotales ?? nino.diamantes ?? 0,
+  );
 
   // 5) Legendarios: evaluación automática (no altera economía)
   try {

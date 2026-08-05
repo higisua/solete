@@ -50,10 +50,10 @@ export type LegendaryDef = {
 const img = (archivo: string) => `/assets/cromos/${archivo}`;
 
 /**
- * Nombres NFD en disco (ó/í con combining accent) — no renombrar assets.
+ * Nombres de archivo ASCII (sin tildes) bajo /public/assets/cromos/.
  */
-const ASSET_EQUITACION = "deportes_legendaria_equitacio\u0301n.png";
-const ASSET_CAMION = "transporte_legendaria_camio\u0301n.png";
+const ASSET_EQUITACION = "deportes_legendaria_equitacion.png";
+const ASSET_CAMION = "transporte_legendaria_camion.png";
 
 /**
  * Catálogo de los 15 legendarios.

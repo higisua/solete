@@ -83,7 +83,12 @@ async function idsPoseidosCromos(ninoId: string): Promise<Set<string>> {
     console.warn("[legendarios] cromos_nino:", error.message);
     return new Set();
   }
-  return new Set((data ?? []).map((r) => String(r.cromo_id)));
+  return new Set(
+    (data ?? []).map((r) => {
+      const id = String(r.cromo_id);
+      return id === "transportes_glovo" ? "transportes_globo" : id;
+    }),
+  );
 }
 
 async function leerMejorRachaMeta(ninoId: string): Promise<number> {
@@ -144,23 +149,28 @@ export async function actualizarMejorRachaCorrectas(
   return rachaSesion;
 }
 
-async function cargarStats(ninoId: string): Promise<StatsLegendarios> {
+async function cargarStats(
+  ninoId: string,
+  poseidosPrefetch?: Set<string>,
+): Promise<StatsLegendarios> {
   const supabase = await createClient();
-  const poseidos = await idsPoseidosCromos(ninoId);
-  const ownedLegendaryIds = new Set(
-    [...poseidos].filter((id) => esIdLegendario(id)),
-  );
 
   const [
+    poseidos,
+    maxCorrectStreak,
     { data: misiones },
     { data: sesionesLibre },
     { data: progresoRows },
     { data: medallas },
     { data: asignaturas },
   ] = await Promise.all([
+    poseidosPrefetch
+      ? Promise.resolve(poseidosPrefetch)
+      : idsPoseidosCromos(ninoId),
+    leerMejorRachaMeta(ninoId),
     supabase
       .from("misiones_diarias")
-      .select("estrellas, completada")
+      .select("estrellas")
       .eq("nino_id", ninoId)
       .eq("completada", true),
     supabase
@@ -175,6 +185,10 @@ async function cargarStats(ninoId: string): Promise<StatsLegendarios> {
     supabase.from("medallas_nino").select("medalla_id").eq("nino_id", ninoId),
     supabase.from("asignaturas").select("id, nombre"),
   ]);
+
+  const ownedLegendaryIds = new Set(
+    [...poseidos].filter((id) => esIdLegendario(id)),
+  );
 
   const missionsCompleted = (misiones ?? []).length;
   const starsEarned = (misiones ?? []).reduce(
@@ -200,7 +214,9 @@ async function cargarStats(ninoId: string): Promise<StatsLegendarios> {
     questionsFromPractice,
   );
 
-  const temaIds = [...new Set((progresoRows ?? []).map((p) => String(p.tema_id)))];
+  const temaIds = [
+    ...new Set((progresoRows ?? []).map((p) => String(p.tema_id))),
+  ];
   let languageCorrect = 0;
   let mathCorrect = 0;
 
@@ -237,8 +253,6 @@ async function cargarStats(ninoId: string): Promise<StatsLegendarios> {
     if (id === META_RACHA_CORRECTAS_ID) return false;
     return esIdLegendario(id) || CATALOGO_CROMOS.some((c) => c.id === id);
   }).length;
-
-  const maxCorrectStreak = await leerMejorRachaMeta(ninoId);
 
   return {
     missionsCompleted,
@@ -377,8 +391,9 @@ export async function evaluarLegendarios(
 
 export async function getLegendariosVista(
   ninoId: string,
+  opts?: { poseidos?: Set<string> },
 ): Promise<LegendariosVista> {
-  const stats = await cargarStats(ninoId);
+  const stats = await cargarStats(ninoId, opts?.poseidos);
 
   const items: LegendarioProgresoItem[] = CATALOGO_LEGENDARIOS.map((def) => {
     const loTiene = stats.ownedLegendaryIds.has(def.id);

@@ -199,7 +199,12 @@ async function idsPoseidos(ninoId: string): Promise<Set<string>> {
     console.warn("[cromos] lectura:", error.message);
     return new Set();
   }
-  return new Set((data ?? []).map((r) => String(r.cromo_id)));
+  return new Set(
+    (data ?? []).map((r) => {
+      const id = String(r.cromo_id);
+      return id === "transportes_glovo" ? "transportes_globo" : id;
+    }),
+  );
 }
 
 /**
@@ -442,10 +447,11 @@ export async function getColeccionVista(
   ]);
 
   const mapa = new Map(
-    (filas ?? []).map((f) => [
-      String(f.cromo_id),
-      f.obtenido_en ? String(f.obtenido_en) : null,
-    ]),
+    (filas ?? []).map((f) => {
+      const raw = String(f.cromo_id);
+      const id = raw === "transportes_glovo" ? "transportes_globo" : raw;
+      return [id, f.obtenido_en ? String(f.obtenido_en) : null] as const;
+    }),
   );
 
   const tematicas: TematicaAlbum[] = [...TEMATICAS_CROMOS]
@@ -475,8 +481,9 @@ export async function getColeccionVista(
   const conseguidos = tematicas.reduce((s, t) => s + t.conseguidos, 0);
   const totalVisible = tematicas.reduce((s, t) => s + t.total, 0);
 
+  const poseidos = new Set(mapa.keys());
   const { getLegendariosVista } = await import("@/lib/juego/legendarios-eval");
-  const legendarios = await getLegendariosVista(ninoId);
+  const legendarios = await getLegendariosVista(ninoId, { poseidos });
 
   return {
     tematicas,

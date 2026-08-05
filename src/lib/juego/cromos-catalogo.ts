@@ -141,11 +141,13 @@ export const CATALOGO_CROMOS: readonly CromoDef[] = [
   { id: "transportes_tren", tematicaId: "transportes", nombre: "Tren", rareza: "comun", imagenSrc: img("transportes_comun_tren.png"), orden: 5 },
   { id: "transportes_avion", tematicaId: "transportes", nombre: "Avión", rareza: "raro", imagenSrc: img("transportes_raro_avion.png"), orden: 6 },
   { id: "transportes_barco", tematicaId: "transportes", nombre: "Barco", rareza: "raro", imagenSrc: img("transportes_raro_barco.png"), orden: 7 },
-  { id: "transportes_glovo", tematicaId: "transportes", nombre: "Glovo", rareza: "especial", imagenSrc: img("transportes_especial_glovo.png"), orden: 8 },
+  { id: "transportes_globo", tematicaId: "transportes", nombre: "Globo", rareza: "especial", imagenSrc: img("transportes_especial_globo.png"), orden: 8 },
 ] as const;
 
 export function cromoPorId(id: CromoId): CromoDef | undefined {
-  return CATALOGO_CROMOS.find((c) => c.id === id);
+  // Alias legacy: el archivo/nombre era "Glovo" y pasó a "Globo".
+  const clave = id === "transportes_glovo" ? "transportes_globo" : id;
+  return CATALOGO_CROMOS.find((c) => c.id === clave);
 }
 
 export function tematicaPorId(id: TematicaId): TematicaDef | undefined {

@@ -209,6 +209,70 @@ export async function getTemasContenidoExtremo(
 }
 
 /**
+ * Lista rápida para el menú de práctica extrema:
+ * asignaturas del niño con equivalente en el curso siguiente y ≥1 pregunta.
+ * Evita cargar pools completos.
+ */
+export async function listarAsignaturasParaPracticaExtrema(
+  cursoNino: "1" | "2",
+  asignaturasOrigen: Asignatura[],
+): Promise<Array<Asignatura & { temas: Tema[] }>> {
+  if (asignaturasOrigen.length === 0) return [];
+
+  const destinos = await getAsignaturasPorCurso(
+    cursoContenidoExtremo(cursoNino),
+  );
+  const destPorNombre = new Map(
+    destinos.map((a) => [claveNombre(a.nombre), a]),
+  );
+
+  const pares = asignaturasOrigen
+    .map((origen) => {
+      const dest = destPorNombre.get(claveNombre(origen.nombre));
+      return dest ? { origen, dest } : null;
+    })
+    .filter((p): p is { origen: Asignatura; dest: Asignatura } => p != null);
+
+  if (pares.length === 0) return [];
+
+  const destIds = pares.map((p) => p.dest.id);
+  const supabase = await createClient();
+  const { data: temas } = await supabase
+    .from("temas")
+    .select("id, asignatura_id, nombre, orden, creado_en")
+    .in("asignatura_id", destIds)
+    .order("orden", { ascending: true });
+
+  const temasLista = (temas as Tema[]) ?? [];
+  if (temasLista.length === 0) return [];
+
+  const temaIds = temasLista.map((t) => t.id);
+  const { data: conPreg } = await supabase
+    .from("preguntas")
+    .select("tema_id")
+    .in("tema_id", temaIds);
+
+  const temasConPreguntas = new Set(
+    (conPreg ?? []).map((p) => String(p.tema_id)),
+  );
+
+  const temasPorDest = new Map<string, Tema[]>();
+  for (const t of temasLista) {
+    const list = temasPorDest.get(t.asignatura_id) ?? [];
+    list.push(t);
+    temasPorDest.set(t.asignatura_id, list);
+  }
+
+  const out: Array<Asignatura & { temas: Tema[] }> = [];
+  for (const { origen, dest } of pares) {
+    const ts = temasPorDest.get(dest.id) ?? [];
+    if (!ts.some((t) => temasConPreguntas.has(t.id))) continue;
+    out.push({ ...origen, temas: ts });
+  }
+  return out;
+}
+
+/**
  * Práctica: pool de una asignatura (opcionalmente un tema).
  * Extremo: SOLO preguntas del curso siguiente (1→2, 2→3).
  * Sin contenido superior → [] (sin fallback al mismo curso).
