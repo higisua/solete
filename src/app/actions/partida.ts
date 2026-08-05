@@ -15,7 +15,6 @@ import {
   type MedallaDesbloqueada,
 } from "@/lib/juego/medallas";
 import type { LegendarioDesbloqueado } from "@/lib/juego/legendarios-eval";
-import { programarCatchupPremios } from "@/lib/juego/catchup-premios";
 import { calcularEstrellas, puntosPorAciertos } from "@/lib/juego/reglas";
 import type { ActionResult, ModoJuego } from "@/types/database";
 
@@ -347,12 +346,6 @@ export async function finalizarPartida(
       }
     }
   }
-
-  // Catch-up de medallas/premios fuera del hang de resultados
-  programarCatchupPremios(
-    payload.ninoId,
-    diamantesTotales ?? nino.diamantes ?? 0,
-  );
 
   // 5) Legendarios: evaluación automática (no altera economía)
   try {

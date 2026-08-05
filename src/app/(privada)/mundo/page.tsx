@@ -7,7 +7,6 @@ import {
   getResumenMisionHoy,
   getTotalesProgreso,
 } from "@/lib/juego";
-import { programarCatchupPremios } from "@/lib/juego/catchup-premios";
 import { AVATARES } from "@/lib/avatares";
 import { publicAsset } from "@/lib/public-asset";
 
@@ -25,9 +24,6 @@ export default async function MundoPage() {
       redirect("/quien-juega");
     }
   }
-
-  // Catch-up fuera del critical path (no bloquea el HTML)
-  programarCatchupPremios(nino.id, nino.diamantes ?? 0);
 
   const [totales, hermanos, misionHoy] = await Promise.all([
     getTotalesProgreso(nino.id, nino.diamantes),

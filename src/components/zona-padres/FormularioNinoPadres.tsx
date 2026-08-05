@@ -71,6 +71,21 @@ export function FormularioNinoPadres({
           placeholder="Ej. Lucía"
         />
 
+        {modo === "editar" ? (
+          <Campo
+            label="Diamantes"
+            name="diamantes"
+            type="number"
+            inputMode="numeric"
+            required
+            min={0}
+            max={999999}
+            step={1}
+            defaultValue={nino?.diamantes ?? 0}
+            hint="Ajuste manual del saldo. No cambia medallas ni el historial."
+          />
+        ) : null}
+
         <fieldset>
           <legend className="mb-2 font-titulo text-base font-semibold text-sol">
             Curso

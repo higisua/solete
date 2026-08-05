@@ -63,7 +63,7 @@ export default async function HijosPage() {
                       {nino.nombre}
                     </p>
                     <p className="font-cuerpo text-sm text-black/50">
-                      {nino.curso}º primaria
+                      {nino.curso}º primaria · {nino.diamantes ?? 0} diamantes
                     </p>
                   </div>
                 </div>

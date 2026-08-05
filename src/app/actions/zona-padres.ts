@@ -172,6 +172,7 @@ export async function actualizarNinoZonaPadres(formData: FormData): Promise<Acti
   const nombre = texto(formData, "nombre");
   const curso = texto(formData, "curso");
   const avatar = texto(formData, "avatar");
+  const diamantesRaw = texto(formData, "diamantes");
 
   if (!ninoId || !nombre) return { ok: false, error: "Datos incompletos." };
   if (curso !== "1" && curso !== "2") {
@@ -179,6 +180,14 @@ export async function actualizarNinoZonaPadres(formData: FormData): Promise<Acti
   }
   if (!AVATARES.some((a) => a.id === avatar)) {
     return { ok: false, error: "Elige un avatar." };
+  }
+
+  if (!/^\d+$/.test(diamantesRaw)) {
+    return { ok: false, error: "Los diamantes deben ser un número entero (≥ 0)." };
+  }
+  const diamantes = Number.parseInt(diamantesRaw, 10);
+  if (!Number.isFinite(diamantes) || diamantes < 0 || diamantes > 999_999) {
+    return { ok: false, error: "Los diamantes deben estar entre 0 y 999999." };
   }
 
   const ninos = await getNinosDeMiFamilia();
@@ -189,7 +198,7 @@ export async function actualizarNinoZonaPadres(formData: FormData): Promise<Acti
   const supabase = await createClient();
   const { error } = await supabase
     .from("ninos")
-    .update({ nombre, curso, avatar })
+    .update({ nombre, curso, avatar, diamantes })
     .eq("id", ninoId);
 
   if (error) {

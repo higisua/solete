@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { MedallasVista } from "@/components/medallas/MedallasVista";
 import { getNinoActivoValidado } from "@/lib/juego";
-import { programarCatchupPremios } from "@/lib/juego/catchup-premios";
 import { getMedallasVista } from "@/lib/juego/medallas-vista";
 
 export default async function MedallasPage() {
@@ -9,8 +8,6 @@ export default async function MedallasPage() {
   if (!nino) {
     redirect("/entrada");
   }
-
-  programarCatchupPremios(nino.id, nino.diamantes ?? 0);
 
   const data = await getMedallasVista(nino.id);
 
