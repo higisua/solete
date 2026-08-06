@@ -2,19 +2,18 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    // next/image: reutiliza optimizaciones en dispositivo ~30 días
-    minimumCacheTTL: 60 * 60 * 24 * 30,
+    // next/image: reutiliza optimizaciones en dispositivo ~7 días
+    minimumCacheTTL: 60 * 60 * 24 * 7,
   },
   async headers() {
     return [
       {
-        // Cromos, mascota, avatares, logos: caché HTTP larga en el dispositivo
+        // Cromos, mascota, avatares, logos: caché HTTP en el dispositivo
         source: "/assets/:path*",
         headers: [
           {
             key: "Cache-Control",
-            value:
-              "public, max-age=2592000, stale-while-revalidate=604800, immutable",
+            value: "public, max-age=604800, stale-while-revalidate=86400",
           },
         ],
       },
